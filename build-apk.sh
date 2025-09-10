@@ -37,6 +37,41 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Function to generate QR code for download link
+generate_qr_code() {
+    local download_url="$1"
+    local apk_name="$2"
+    
+    print_status "Generating QR code for download link..."
+    
+    # Check if qrencode is installed
+    if ! command -v qrencode &> /dev/null; then
+        print_warning "qrencode is not installed. Installing qrencode..."
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y qrencode
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y qrencode
+        elif command -v brew &> /dev/null; then
+            brew install qrencode
+        else
+            print_warning "Cannot install qrencode automatically. Please install qrencode manually."
+            return 1
+        fi
+    fi
+    
+    # Generate QR code
+    local qr_file="${apk_name%.apk}_qr.png"
+    qrencode -o "$qr_file" -s 10 -m 1 "$download_url"
+    
+    if [ $? -eq 0 ] && [ -f "$qr_file" ]; then
+        print_success "QR code generated: $qr_file"
+        return 0
+    else
+        print_warning "Failed to generate QR code"
+        return 1
+    fi
+}
+
 # Function to upload APK to FTP server
 upload_to_ftp() {
     local apk_file="$1"
@@ -71,7 +106,12 @@ upload_to_ftp() {
     
     if [ $? -eq 0 ]; then
         print_success "APK uploaded successfully to FTP server! ✓"
-        print_status "FTP URL: ftp://$FTP_HOST$REMOTE_DIR/$apk_name"
+        local download_url="http://$FTP_HOST$REMOTE_DIR/$apk_name"
+        print_status "Download URL: $download_url"
+        
+        # Generate QR code for download link
+        generate_qr_code "$download_url" "$apk_name"
+        
         return 0
     else
         print_error "Failed to upload APK to FTP server!"
@@ -204,11 +244,19 @@ if [ -f "$APK_PATH" ]; then
     echo "📱 Your APK is ready!"
     echo "📍 Local Location: $(pwd)/$APK_NAME"
     echo "📦 Size: $APK_SIZE"
-    echo "🌐 FTP Location: ftp://$FTP_HOST$REMOTE_DIR/$APK_NAME"
+    echo "🌐 Download URL: http://$FTP_HOST$REMOTE_DIR/$APK_NAME"
+    
+    # Check if QR code was generated
+    QR_FILE="${APK_NAME%.apk}_qr.png"
+    if [ -f "$QR_FILE" ]; then
+        echo "📱 QR Code: $(pwd)/$QR_FILE"
+        echo "   Scan this QR code with your phone to download the APK directly!"
+    fi
+    
     echo ""
     echo "You can now install this APK on Android devices by:"
-    echo "1. Downloading from FTP server"
-    echo "2. Transferring the APK file to your Android device"
+    echo "1. Scanning the QR code with your phone camera"
+    echo "2. Or visiting the download URL directly"
     echo "3. Enabling 'Install from unknown sources' in Android settings"
     echo "4. Opening the APK file on your device to install"
     echo ""
@@ -236,7 +284,11 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         
         # Upload debug APK to FTP as well
         print_status "Uploading debug APK to FTP server..."
-        upload_to_ftp "$DEBUG_APK_NAME" "$DEBUG_APK_NAME"
+        if upload_to_ftp "$DEBUG_APK_NAME" "$DEBUG_APK_NAME"; then
+            print_success "Debug APK uploaded successfully!"
+        else
+            print_warning "Debug APK upload failed, but file is available locally"
+        fi
     fi
 fi
 
