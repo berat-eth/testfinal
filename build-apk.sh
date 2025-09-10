@@ -94,23 +94,26 @@ upload_to_ftp() {
         fi
     fi
     
-    # Upload using lftp
+    # Upload using lftp with 1.apk as target name
     lftp -c "
     set ftp:ssl-allow no
     set ftp:ssl-protect-data no
     open -u $FTP_USER,$FTP_PASS $FTP_HOST
     cd $REMOTE_DIR
-    put $apk_file -o $apk_name
+    # Delete existing 1.apk if it exists
+    rm -f 1.apk
+    # Upload new APK as 1.apk
+    put $apk_file -o 1.apk
     bye
     "
     
     if [ $? -eq 0 ]; then
-        print_success "APK uploaded successfully to FTP server! ✓"
-        local download_url="http://$FTP_HOST$REMOTE_DIR/$apk_name"
+        print_success "APK uploaded successfully to FTP server as 1.apk! ✓"
+        local download_url="http://$FTP_HOST$REMOTE_DIR/1.apk"
         print_status "Download URL: $download_url"
         
         # Generate QR code for download link
-        generate_qr_code "$download_url" "$apk_name"
+        generate_qr_code "$download_url" "1"
         
         return 0
     else
@@ -244,10 +247,11 @@ if [ -f "$APK_PATH" ]; then
     echo "📱 Your APK is ready!"
     echo "📍 Local Location: $(pwd)/$APK_NAME"
     echo "📦 Size: $APK_SIZE"
-    echo "🌐 Download URL: http://$FTP_HOST$REMOTE_DIR/$APK_NAME"
+    echo "🌐 Download URL: http://$FTP_HOST$REMOTE_DIR/1.apk"
+    echo "📁 Server Name: 1.apk (always the same name for easy access)"
     
     # Check if QR code was generated
-    QR_FILE="${APK_NAME%.apk}_qr.png"
+    QR_FILE="1_qr.png"
     if [ -f "$QR_FILE" ]; then
         echo "📱 QR Code: $(pwd)/$QR_FILE"
         echo "   Scan this QR code with your phone to download the APK directly!"
@@ -259,6 +263,8 @@ if [ -f "$APK_PATH" ]; then
     echo "2. Or visiting the download URL directly"
     echo "3. Enabling 'Install from unknown sources' in Android settings"
     echo "4. Opening the APK file on your device to install"
+    echo ""
+    echo "💡 Note: The APK is always uploaded as '1.apk' for consistent access!"
     echo ""
     
 else
@@ -282,10 +288,25 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         cp "android/$DEBUG_APK_PATH" "$DEBUG_APK_NAME"
         print_success "Debug APK also created: $DEBUG_APK_NAME"
         
-        # Upload debug APK to FTP as well
-        print_status "Uploading debug APK to FTP server..."
-        if upload_to_ftp "$DEBUG_APK_NAME" "$DEBUG_APK_NAME"; then
-            print_success "Debug APK uploaded successfully!"
+        # Upload debug APK to FTP as well (as debug.apk)
+        print_status "Uploading debug APK to FTP server as debug.apk..."
+        
+        # Upload debug APK with special name
+        lftp -c "
+        set ftp:ssl-allow no
+        set ftp:ssl-protect-data no
+        open -u $FTP_USER,$FTP_PASS $FTP_HOST
+        cd $REMOTE_DIR
+        # Delete existing debug.apk if it exists
+        rm -f debug.apk
+        # Upload new debug APK as debug.apk
+        put $DEBUG_APK_NAME -o debug.apk
+        bye
+        "
+        
+        if [ $? -eq 0 ]; then
+            print_success "Debug APK uploaded successfully as debug.apk!"
+            print_status "Debug Download URL: http://$FTP_HOST$REMOTE_DIR/debug.apk"
         else
             print_warning "Debug APK upload failed, but file is available locally"
         fi
