@@ -130,7 +130,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['left', 'bottom']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'bottom']}>
         <AppProvider>
           <AppNavigator />
         </AppProvider>
