@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Huglu Outdoor - Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="logo">
+            <i class="fas fa-mountain"></i>
+            <span>Huglu Admin</span>
+        </div>
+        
+        <nav class="nav-menu">
+            <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#users" class="nav-item" data-section="users">
+                <i class="fas fa-users"></i>
+                <span>Kullanıcılar</span>
+            </a>
+            <a href="#orders" class="nav-item" data-section="orders">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Siparişler</span>
+            </a>
+            <a href="#products" class="nav-item" data-section="products">
+                <i class="fas fa-box"></i>
+                <span>Ürünler</span>
+            </a>
+            <a href="#campaigns" class="nav-item" data-section="campaigns">
+                <i class="fas fa-bullhorn"></i>
+                <span>Kampanyalar</span>
+            </a>
+            <a href="wallet-approval.html" class="nav-item">
+                <i class="fas fa-wallet"></i>
+                <span>Para Yükleme Onayları</span>
+            </a>
+            <a href="#segments" class="nav-item" data-section="segments">
+                <i class="fas fa-users-cog"></i>
+                <span>Müşteri Segmentleri</span>
+            </a>
+            <a href="#analytics" class="nav-item" data-section="analytics">
+                <i class="fas fa-chart-line"></i>
+                <span>Analitik</span>
+            </a>
+            <a href="#tenants" class="nav-item" data-section="tenants">
+                <i class="fas fa-building"></i>
+                <span>Tenants</span>
+            </a>
+            <a href="#settings" class="nav-item" data-section="settings">
+                <i class="fas fa-cog"></i>
+                <span>Ayarlar</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 id="pageTitle">Dashboard</h1>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Admin</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Section -->
+        <div class="content-section" id="dashboard-section">
+            <div class="section-header">
+                <h2 style="margin: 0;">Dashboard Özeti</h2>
+                <button class="btn-primary" onclick="refreshDashboard()">
+                    <i class="fas fa-sync"></i> Yenile
+                </button>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon users">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="totalUsers">-</h3>
+                        <p>Toplam Kullanıcı</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon products">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="totalProducts">-</h3>
+                        <p>Toplam Ürün</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon orders">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="totalOrders">-</h3>
+                        <p>Toplam Sipariş</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon revenue">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="monthlyRevenue">-</h3>
+                        <p>Aylık Gelir</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-charts">
+                <div class="charts-grid">
+                    <!-- Sales Chart -->
+                    <div class="chart-card">
+                        <h3>Son 7 Günlük Satışlar</h3>
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                    
+                    <!-- Orders Status Chart -->
+                    <div class="chart-card">
+                        <h3>Sipariş Durumları</h3>
+                        <canvas id="ordersChart"></canvas>
+                    </div>
+                    
+                    <!-- Monthly Revenue Chart -->
+                    <div class="chart-card">
+                        <h3>Aylık Gelir Trendi</h3>
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                    
+                    <!-- Top Products Chart -->
+                    <div class="chart-card">
+                        <h3>En Çok Satan Ürünler</h3>
+                        <canvas id="productsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="activity-section">
+                    <div class="chart-card">
+                        <h3>Son Aktiviteler</h3>
+                        <div class="activity-list" id="recentActivity">
+                            <div class="activity-item">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Yeni kullanıcı kaydı</span>
+                                <small>2 dakika önce</small>
+                            </div>
+                            <div class="activity-item">
+                                <i class="fas fa-shopping-bag"></i>
+                                <span>Yeni sipariş alındı</span>
+                                <small>15 dakika önce</small>
+                            </div>
+                            <div class="activity-item">
+                                <i class="fas fa-truck"></i>
+                                <span>Sipariş kargoya verildi</span>
+                                <small>1 saat önce</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Section -->
+        <div class="content-section hidden" id="users-section">
+            <div class="section-header">
+                <h2>Kullanıcı Yönetimi</h2>
+                <button class="btn-primary" onclick="refreshUsers()">
+                    <i class="fas fa-sync"></i> Yenile
+                </button>
+            </div>
+            
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ad</th>
+                            <th>Email</th>
+                            <th>Telefon</th>
+                            <th>Tenant</th>
+                            <th>Kayıt Tarihi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="6" class="loading">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Orders Section -->
+        <div class="content-section hidden" id="orders-section">
+            <div class="section-header">
+                <h2>Sipariş Yönetimi</h2>
+                <button class="btn-primary" onclick="refreshOrders()">
+                    <i class="fas fa-sync"></i> Yenile
+                </button>
+            </div>
+            
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Müşteri</th>
+                            <th>Ürünler</th>
+                            <th>Tutar</th>
+                            <th>Durum</th>
+                            <th>Tarih</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                        <tr>
+                            <td colspan="7" class="loading">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Products Section -->
+        <div class="content-section hidden" id="products-section">
+            <div class="section-header">
+                <h2>Ürün Yönetimi</h2>
+                <div class="header-actions">
+                    <button class="btn-secondary" onclick="refreshProducts()">
+                        <i class="fas fa-sync"></i> Yenile
+                    </button>
+                <button class="btn-primary" onclick="triggerProductSync()">
+                        <i class="fas fa-sync-alt"></i> XML Sync
+                    </button>
+                </div>
+            </div>
+            
+            <div class="products-grid">
+                <div class="product-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon products">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalProductsCount">-</h3>
+                            <p>Toplam Ürün</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalVariationsCount">-</h3>
+                            <p>Varyasyonlu Ürün</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+                            <i class="fas fa-warehouse"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="lowStockCount">-</h3>
+                            <p>Düşük Stok</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Ürün Adı</th>
+                                <th>Kategori</th>
+                                <th>Fiyat</th>
+                                <th>Stok</th>
+                                <th>Varyasyon</th>
+                                <th>Son Güncelleme</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody">
+                            <tr>
+                                <td colspan="8" class="loading">Yükleniyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campaigns Section -->
+        <div class="content-section hidden" id="campaigns-section">
+            <div class="section-header">
+                <h2>Kampanya Yönetimi</h2>
+                <button class="btn-primary" onclick="openCreateCampaignModal()">
+                    <i class="fas fa-plus"></i> Yeni Kampanya
+                </button>
+            </div>
+            
+            <div class="campaigns-grid">
+                <div class="campaign-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            <i class="fas fa-bullhorn"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalCampaignsCount">-</h3>
+                            <p>Toplam Kampanya</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+                            <i class="fas fa-play"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="activeCampaignsCount">-</h3>
+                            <p>Aktif Kampanya</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="campaignUsageCount">-</h3>
+                            <p>Toplam Kullanım</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Kampanya Adı</th>
+                                <th>Tür</th>
+                                <th>Durum</th>
+                                <th>Hedef Segment</th>
+                                <th>İndirim</th>
+                                <th>Kullanım</th>
+                                <th>Başlangıç</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="campaignsTableBody">
+                            <tr>
+                                <td colspan="9" class="loading">Yükleniyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Segments Section -->
+        <div class="content-section hidden" id="segments-section">
+            <div class="section-header">
+                <h2>Müşteri Segmentleri</h2>
+                <div class="header-actions">
+                    <button class="btn-secondary" onclick="createAutomaticSegments()">
+                        <i class="fas fa-robot"></i> Otomatik Oluştur
+                    </button>
+                    <button class="btn-primary" onclick="openCreateSegmentModal()">
+                        <i class="fas fa-plus"></i> Yeni Segment
+                    </button>
+                </div>
+            </div>
+            
+            <div class="segments-grid">
+                <div class="segment-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            <i class="fas fa-users-cog"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalSegmentsCount">-</h3>
+                            <p>Toplam Segment</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalCustomersInSegments">-</h3>
+                            <p>Segmentteki Müşteri</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Segment Adı</th>
+                                <th>Açıklama</th>
+                                <th>Kriterler</th>
+                                <th>Müşteri Sayısı</th>
+                                <th>Durum</th>
+                                <th>Oluşturulma</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="segmentsTableBody">
+                            <tr>
+                                <td colspan="8" class="loading">Yükleniyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Section -->
+        <div class="content-section hidden" id="analytics-section">
+            <div class="section-header">
+                <h2>Analitik ve Raporlar</h2>
+                <button class="btn-primary" onclick="refreshAnalytics()">
+                    <i class="fas fa-sync"></i> Yenile
+                </button>
+            </div>
+            
+            <div class="analytics-grid">
+                <div class="analytics-charts">
+                    <div class="chart-card">
+                        <h3>Müşteri Segmentasyonu Dağılımı</h3>
+                        <canvas id="segmentDistributionChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Kampanya Performansı</h3>
+                        <canvas id="campaignPerformanceChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Ürün Kategorileri</h3>
+                        <canvas id="categoryDistributionChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Stok Durumu</h3>
+                        <canvas id="stockStatusChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="analytics-tables">
+                    <div class="table-container">
+                        <h3>En Çok Satan Ürünler</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ürün</th>
+                                    <th>Satış Adedi</th>
+                                    <th>Gelir</th>
+                                    <th>Kategori</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topProductsTableBody">
+                                <tr>
+                                    <td colspan="4" class="loading">Yükleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="table-container">
+                        <h3>Kampanya Performansı</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Kampanya</th>
+                                    <th>Kullanım</th>
+                                    <th>Dönüşüm</th>
+                                    <th>Gelir</th>
+                                </tr>
+                            </thead>
+                            <tbody id="campaignPerformanceTableBody">
+                                <tr>
+                                    <td colspan="4" class="loading">Yükleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tenants Section -->
+        <div class="content-section hidden" id="tenants-section">
+            <div class="section-header">
+                <h2>Tenant Yönetimi</h2>
+                <button class="btn-primary" onclick="refreshTenants()">
+                    <i class="fas fa-sync"></i> Yenile
+                </button>
+            </div>
+            
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ad</th>
+                            <th>Domain</th>
+                            <th>Subdomain</th>
+                            <th>Durum</th>
+                            <th>Oluşturulma</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tenantsTableBody">
+                        <tr>
+                            <td colspan="6" class="loading">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div class="content-section hidden" id="settings-section">
+            <div class="section-header">
+                <h2>Ayarlar</h2>
+            </div>
+            
+            <div class="settings-grid">
+                <div class="setting-card">
+                    <h3>API Ayarları</h3>
+                    <div class="setting-item">
+                        <label>Admin Key:</label>
+                        <input type="password" value="huglu-admin-2024-secure-key" readonly>
+                    </div>
+                </div>
+                
+                <div class="setting-card">
+                    <h3>Sistem Bilgileri</h3>
+                    <div class="setting-item">
+                        <label>Sunucu Durumu:</label>
+                        <span class="status-badge online">Çevrimiçi</span>
+                    </div>
+                    <div class="setting-item">
+                        <label>Veritabanı:</label>
+                        <span class="status-badge online">Bağlı</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal hidden" id="orderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Sipariş Detayları</h3>
+                <button class="modal-close" onclick="closeOrderModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="orderModalBody">
+                <!-- Order details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Campaign Modal -->
+    <div class="modal hidden" id="createCampaignModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Yeni Kampanya Oluştur</h3>
+                <button class="modal-close" onclick="closeModal('createCampaignModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="createCampaignForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="campaignName">Kampanya Adı *</label>
+                            <input type="text" id="campaignName" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="campaignType">Kampanya Türü *</label>
+                            <select id="campaignType" name="type" required>
+                                <option value="discount">İndirim</option>
+                                <option value="free_shipping">Ücretsiz Kargo</option>
+                                <option value="bundle">Paket Kampanyası</option>
+                                <option value="loyalty">Sadakat Programı</option>
+                                <option value="seasonal">Mevsimsel</option>
+                                <option value="birthday">Doğum Günü</option>
+                                <option value="abandoned_cart">Terk Edilen Sepet</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="campaignDescription">Açıklama</label>
+                        <textarea id="campaignDescription" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="targetSegment">Hedef Segment</label>
+                            <select id="targetSegment" name="targetSegmentId">
+                                <option value="">Tüm Müşteriler</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="discountType">İndirim Türü</label>
+                            <select id="discountType" name="discountType">
+                                <option value="percentage">Yüzde</option>
+                                <option value="fixed">Sabit Tutar</option>
+                                <option value="buy_x_get_y">Al X Öde Y</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="discountValue">İndirim Değeri</label>
+                            <input type="number" id="discountValue" name="discountValue" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="minOrderAmount">Minimum Sipariş Tutarı</label>
+                            <input type="number" id="minOrderAmount" name="minOrderAmount" step="0.01" min="0">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="startDate">Başlangıç Tarihi</label>
+                            <input type="datetime-local" id="startDate" name="startDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="endDate">Bitiş Tarihi</label>
+                            <input type="datetime-local" id="endDate" name="endDate">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="usageLimit">Kullanım Limiti</label>
+                        <input type="number" id="usageLimit" name="usageLimit" min="1">
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="closeModal('createCampaignModal')">
+                            İptal
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            Kampanya Oluştur
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Segment Modal -->
+    <div class="modal hidden" id="createSegmentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Yeni Müşteri Segmenti Oluştur</h3>
+                <button class="modal-close" onclick="closeModal('createSegmentModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="createSegmentForm">
+                    <div class="form-group">
+                        <label for="segmentName">Segment Adı *</label>
+                        <input type="text" id="segmentName" name="name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="segmentDescription">Açıklama</label>
+                        <textarea id="segmentDescription" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Segment Kriterleri</label>
+                        <div class="criteria-section">
+                            <div class="criteria-item">
+                                <span>Minimum Sipariş Sayısı</span>
+                                <input type="number" name="minOrders" min="0" style="width: 100px;">
+                            </div>
+                            <div class="criteria-item">
+                                <span>Maksimum Sipariş Sayısı</span>
+                                <input type="number" name="maxOrders" min="0" style="width: 100px;">
+                            </div>
+                            <div class="criteria-item">
+                                <span>Minimum Harcama (TL)</span>
+                                <input type="number" name="minSpent" min="0" step="0.01" style="width: 100px;">
+                            </div>
+                            <div class="criteria-item">
+                                <span>Maksimum Harcama (TL)</span>
+                                <input type="number" name="maxSpent" min="0" step="0.01" style="width: 100px;">
+                            </div>
+                            <div class="criteria-item">
+                                <span>Son Sipariş (Gün)</span>
+                                <input type="number" name="lastOrderDays" min="0" style="width: 100px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="closeModal('createSegmentModal')">
+                            İptal
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            Segment Oluştur
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=remote-2025"></script>
+</body>
+</html>

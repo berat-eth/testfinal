@@ -1,0 +1,306 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { Colors } from '../theme/colors';
+import { Spacing, Shadows } from '../theme/theme';
+
+interface BackendErrorModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onRedirect: () => void;
+  onRetry: () => void;
+}
+
+const { width } = Dimensions.get('window');
+
+export const BackendErrorModal: React.FC<BackendErrorModalProps> = ({
+  visible,
+  onClose,
+  onRedirect,
+  onRetry,
+}) => {
+  const [countdown, setCountdown] = useState(3);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const scaleAnim = new Animated.Value(0);
+  const countdownAnim = new Animated.Value(1);
+
+  useEffect(() => {
+    if (visible) {
+      setCountdown(3);
+      setIsRedirecting(false);
+      
+      // Modal açılış animasyonu
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        useNativeDriver: true,
+      }).start();
+
+      // Countdown başlat
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setIsRedirecting(true);
+            
+            // Yönlendirme animasyonu
+            Animated.timing(countdownAnim, {
+              toValue: 0,
+              duration: 500,
+              useNativeDriver: true,
+            }).start(() => {
+              setTimeout(() => {
+                onRedirect();
+              }, 100);
+            });
+            
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => {
+        clearInterval(timer);
+      };
+    } else {
+      scaleAnim.setValue(0);
+      countdownAnim.setValue(1);
+    }
+  }, [visible]);
+
+  const handleClose = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      onClose();
+    });
+  };
+
+  const handleRetry = () => {
+    handleClose();
+    setTimeout(() => {
+      onRetry();
+    }, 300);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      transparent
+      visible={visible}
+      animationType="fade"
+      statusBarTranslucent
+    >
+      <View style={styles.overlay}>
+        <Animated.View
+          style={[
+            styles.modalContainer,
+            {
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.errorIcon}>
+              <Icon name="error-outline" size={32} color={Colors.error} />
+            </View>
+            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+              <Icon name="close" size={24} color={Colors.textLight} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Content */}
+          <View style={styles.content}>
+            <Text style={styles.title}>Bağlantı Hatası</Text>
+            <Text style={styles.message}>
+              Backend sunucusuna bağlanılamıyor. İnternet bağlantınızı kontrol edin.
+            </Text>
+
+            {!isRedirecting ? (
+              <View style={styles.countdownContainer}>
+                <Animated.View
+                  style={[
+                    styles.countdownCircle,
+                    {
+                      transform: [{ scale: countdownAnim }],
+                    },
+                  ]}
+                >
+                  <Text style={styles.countdownNumber}>{countdown}</Text>
+                </Animated.View>
+                <Text style={styles.countdownText}>
+                  saniye sonra hugluoutdoor.com sitesine yönlendirileceksiniz
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.redirectingContainer}>
+                <Icon name="language" size={24} color={Colors.primary} />
+                <Text style={styles.redirectingText}>
+                  hugluoutdoor.com sitesine yönlendiriliyor...
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Actions */}
+          {!isRedirecting && (
+            <View style={styles.actions}>
+              <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                <Icon name="refresh" size={20} color={Colors.textOnPrimary} />
+                <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.redirectButton} onPress={onRedirect}>
+                <Icon name="language" size={20} color={Colors.primary} />
+                <Text style={styles.redirectButtonText}>Şimdi Git</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+  },
+  modalContainer: {
+    width: width * 0.9,
+    maxWidth: 400,
+    backgroundColor: Colors.background,
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...Shadows.large,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.lg,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  errorIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.error + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButton: {
+    padding: Spacing.xs,
+  },
+  content: {
+    padding: Spacing.lg,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  message: {
+    fontSize: 16,
+    color: Colors.textLight,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: Spacing.xl,
+  },
+  countdownContainer: {
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  countdownCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  countdownNumber: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: Colors.textOnPrimary,
+  },
+  countdownText: {
+    fontSize: 14,
+    color: Colors.textLight,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  redirectingContainer: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
+  },
+  redirectingText: {
+    fontSize: 16,
+    color: Colors.primary,
+    fontWeight: '600',
+    marginTop: Spacing.sm,
+    textAlign: 'center',
+  },
+  actions: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    gap: Spacing.md,
+  },
+  retryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: Spacing.md,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textOnPrimary,
+    marginLeft: Spacing.sm,
+  },
+  redirectButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    paddingVertical: Spacing.md,
+    borderRadius: 12,
+  },
+  redirectButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginLeft: Spacing.sm,
+  },
+});
