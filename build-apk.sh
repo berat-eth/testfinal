@@ -1,11 +1,17 @@
 #!/bin/bash
 
 # APK Build Script for Huglu Outdoor Mobile App
-# This script builds the APK for the React Native Expo project
+# This script builds the APK for the React Native Expo project and uploads to FTP
 
 set -e  # Exit on any error
 
 echo "🚀 Starting APK build process for Huglu Outdoor..."
+
+# FTP Configuration
+FTP_HOST="46.202.158.159"
+FTP_USER="u987029066.lightcoral-wallaby-366897.hostingersite.com"
+FTP_PASS="xyBBDzq3442.!"
+REMOTE_DIR="/files/public_html"
 
 # Colors for output
 RED='\033[0;31m'
@@ -29,6 +35,48 @@ print_warning() {
 
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Function to upload APK to FTP server
+upload_to_ftp() {
+    local apk_file="$1"
+    local apk_name="$2"
+    
+    print_status "Uploading APK to FTP server..."
+    
+    # Check if lftp is installed
+    if ! command -v lftp &> /dev/null; then
+        print_warning "lftp is not installed. Installing lftp..."
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y lftp
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y lftp
+        elif command -v brew &> /dev/null; then
+            brew install lftp
+        else
+            print_error "Cannot install lftp automatically. Please install lftp manually."
+            return 1
+        fi
+    fi
+    
+    # Upload using lftp
+    lftp -c "
+    set ftp:ssl-allow no
+    set ftp:ssl-protect-data no
+    open -u $FTP_USER,$FTP_PASS $FTP_HOST
+    cd $REMOTE_DIR
+    put $apk_file -o $apk_name
+    bye
+    "
+    
+    if [ $? -eq 0 ]; then
+        print_success "APK uploaded successfully to FTP server! ✓"
+        print_status "FTP URL: ftp://$FTP_HOST$REMOTE_DIR/$apk_name"
+        return 0
+    else
+        print_error "Failed to upload APK to FTP server!"
+        return 1
+    fi
 }
 
 # Check if we're in the right directory
@@ -142,17 +190,27 @@ if [ -f "$APK_PATH" ]; then
     cp "android/$APK_PATH" "$APK_NAME"
     
     print_success "APK copied to project root as: $APK_NAME"
-    print_success "Build completed successfully! 🎉"
+    
+    # Upload to FTP server
+    print_status "Preparing to upload APK to FTP server..."
+    if upload_to_ftp "$APK_NAME" "$APK_NAME"; then
+        print_success "Build and upload completed successfully! 🎉"
+    else
+        print_warning "APK built successfully but FTP upload failed!"
+        print_success "Build completed! 🎉"
+    fi
     
     echo ""
     echo "📱 Your APK is ready!"
-    echo "📍 Location: $(pwd)/$APK_NAME"
+    echo "📍 Local Location: $(pwd)/$APK_NAME"
     echo "📦 Size: $APK_SIZE"
+    echo "🌐 FTP Location: ftp://$FTP_HOST$REMOTE_DIR/$APK_NAME"
     echo ""
     echo "You can now install this APK on Android devices by:"
-    echo "1. Transferring the APK file to your Android device"
-    echo "2. Enabling 'Install from unknown sources' in Android settings"
-    echo "3. Opening the APK file on your device to install"
+    echo "1. Downloading from FTP server"
+    echo "2. Transferring the APK file to your Android device"
+    echo "3. Enabling 'Install from unknown sources' in Android settings"
+    echo "4. Opening the APK file on your device to install"
     echo ""
     
 else
@@ -175,6 +233,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         DEBUG_APK_NAME="huglu-outdoor-debug-v1.0.0-$(date +%Y%m%d-%H%M%S).apk"
         cp "android/$DEBUG_APK_PATH" "$DEBUG_APK_NAME"
         print_success "Debug APK also created: $DEBUG_APK_NAME"
+        
+        # Upload debug APK to FTP as well
+        print_status "Uploading debug APK to FTP server..."
+        upload_to_ftp "$DEBUG_APK_NAME" "$DEBUG_APK_NAME"
     fi
 fi
 
