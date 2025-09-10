@@ -210,7 +210,7 @@ class InputValidation {
     if (typeof input !== 'string') return input;
     
     return input
-      .replace(/[';--]/g, '') // SQL injection karakterleri
+      .replace(/[';\-]/g, '') // SQL injection karakterleri
       .replace(/UNION/gi, '') // UNION attacks
       .replace(/SELECT/gi, '') // SELECT injection
       .replace(/INSERT/gi, '') // INSERT injection

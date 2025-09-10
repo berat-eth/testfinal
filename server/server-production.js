@@ -13,8 +13,13 @@ const morgan = require('morgan');
 const XmlSyncService = require('./services/xml-sync-service');
 const { createDatabaseSchema } = require('./database-schema');
 
-// Load environment variables
-require('dotenv').config();
+// Load environment variables from envai file
+try { 
+  require('dotenv').config({ path: '../.env' }); 
+  console.log('✅ Environment variables loaded from envai file');
+} catch (error) {
+  console.warn('⚠️ Could not load envai file, using defaults:', error.message);
+}
 
 // Security utilities with environment-based configuration
 const SALT_ROUNDS = 12;

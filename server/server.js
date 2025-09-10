@@ -1,6 +1,11 @@
 const express = require('express');
-// Load environment variables from .env if present
-try { require('dotenv').config(); } catch (_) {}
+// Load environment variables from envai file
+try { 
+  require('dotenv').config({ path: '../envai' }); 
+  console.log('✅ Environment variables loaded from envai file');
+} catch (error) {
+  console.warn('⚠️ Could not load envai file, using defaults:', error.message);
+}
 const cors = require('cors');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
@@ -1283,8 +1288,8 @@ app.post('/api/users', authenticateTenant, async (req, res) => {
     // Basic birthDate validation (optional field)
     let validBirthDate = null;
     if (birthDate) {
-      const birth = new Date(birthDate);
-      if (isNaN(birth.getTime())) {
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) {
         console.log('⚠️ Invalid birthDate format, using null:', birthDate);
         validBirthDate = null;
       } else {
@@ -1326,8 +1331,8 @@ app.get('/api/users/:id', authenticateTenant, async (req, res) => {
         console.log('⚠️ birth_date column missing, using fallback query');
         return await poolWrapper.execute(
           'SELECT id, name, email, phone, address, createdAt FROM users WHERE id = ? AND tenantId = ?',
-          [id, req.tenant.id]
-        );
+      [id, req.tenant.id]
+    );
       }
       throw error;
     });

@@ -20,10 +20,10 @@ class DatabaseSecurity {
    */
   getSecureDbConfig() {
     return {
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'huglu_mobile',
+      host: process.env.DB_HOST || '92.113.22.70',
+      user: process.env.DB_USER || 'u987029066_Admin',
+      password: process.env.DB_PASSWORD || '38cdfD8217..',
+      database: process.env.DB_NAME || 'u987029066_mobil',
       port: parseInt(process.env.DB_PORT) || 3306,
       connectionLimit: 10,
       acquireTimeout: 30000,
@@ -60,7 +60,7 @@ class DatabaseSecurity {
     
     // Tehlikeli karakterleri temizle
     return input
-      .replace(/[';--]/g, '') // SQL injection karakterleri
+      .replace(/[';\-]/g, '') // SQL injection karakterleri
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // XSS
       .replace(/javascript:/gi, '') // JavaScript
       .replace(/on\w+\s*=/gi, '') // Event handlers
