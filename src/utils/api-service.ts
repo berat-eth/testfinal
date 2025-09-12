@@ -71,7 +71,7 @@ class ApiService {
   // API Key management
   setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
-    console.log('🔑 API Key set successfully');
+    // API Key set successfully
   }
 
   getApiKey(): string | null {
@@ -80,7 +80,7 @@ class ApiService {
 
   clearApiKey(): void {
     this.apiKey = null;
-    console.log('🔑 API Key cleared');
+    // API Key cleared
   }
 
   // Network auto-detection methods with remote server support
@@ -126,13 +126,13 @@ class ApiService {
       clearTimeout(timeoutId);
       return response.ok;
     } catch (error) {
-      console.log(`❌ URL test failed for ${url}:`, error instanceof Error ? error.message : String(error));
+      // URL test failed - silent
       return false;
     }
   }
 
   async autoDetectApiUrl(): Promise<string> {
-    console.log('🔍 Auto-detecting API URL...');
+    // Auto-detecting API URL
     
     // First try current URL if it is not a localhost/LAN address
     // (silindi)
@@ -153,20 +153,20 @@ class ApiService {
       
       for (const result of results) {
         if (result.isWorking) {
-          console.log(`✅ Found working API URL: ${result.url}`);
+          // Found working API URL
           API_BASE_URL = result.url;
           return result.url;
         }
       }
     }
 
-    console.log('❌ No working remote API URL found, keeping current');
+    // No working remote API URL found, keeping current
     return API_BASE_URL;
   }
 
   setApiUrl(url: string): void {
     API_BASE_URL = url;
-    console.log(`🌐 API URL set to: ${url}`);
+    // API URL set
   }
 
   getCurrentApiUrl(): string {
@@ -323,13 +323,13 @@ class ApiService {
     
     // Network availability check
     if (!isNetworkAvailable() && !isOfflineRetry) {
-      console.log('🌐 Network not available, using offline cache');
+      // Network not available, using offline cache
       return this.handleOfflineRequest<T>(endpoint, method, body);
     }
     
     try {
       const url = `${API_BASE_URL}${endpoint}`;
-      console.log(`🌐 API Request: ${method} ${url}`);
+      // API Request
 
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -353,7 +353,7 @@ class ApiService {
         // Hassas verileri şifrele (POST/PUT istekleri için)
         const encryptedBody = this.encryptSensitiveData(body);
         config.body = JSON.stringify(encryptedBody);
-        console.log('🔐 Request body encrypted for sensitive data');
+        // Request body encrypted for sensitive data
       }
 
       // Custom timeout implementation with AbortController
@@ -367,7 +367,7 @@ class ApiService {
 
       const response = await fetch(url, config);
       clearTimeout(timeoutId);
-      console.log(`📥 Response: ${response.status} ${response.statusText}`);
+      // Response received
       
       // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type');
@@ -398,7 +398,7 @@ class ApiService {
       if (duration > 1000) {
         // Slow API call - silent
       } else {
-        console.log(`⚡ API call: ${endpoint} took ${duration}ms`);
+        // API call completed
       }
 
       if (!response.ok) {
@@ -409,7 +409,7 @@ class ApiService {
       // Server'dan gelen hassas verileri şifre çöz
       if (result.success && result.data) {
         result.data = this.decryptSensitiveData(result.data);
-        console.log('🔓 Response data decrypted for sensitive fields');
+        // Response data decrypted for sensitive fields
       }
 
       // Cache successful responses
@@ -437,11 +437,11 @@ class ApiService {
       
       // Try auto-detection if we haven't tried it yet for this request
       if (retryCount === 0 && this.isOfflineRequest(error)) {
-        console.log(`🔄 Attempting API URL auto-detection...`);
+        // Attempting API URL auto-detection
         try {
           const newUrl = await this.autoDetectApiUrl();
           if (newUrl !== API_BASE_URL) {
-            console.log(`🔄 Retrying with new URL: ${newUrl}`);
+            // Retrying with new URL
             return this.request(endpoint, method, body, retryCount + 1, isOfflineRetry);
           }
         } catch (detectionError) {
@@ -451,7 +451,7 @@ class ApiService {
 
       // Handle offline requests more aggressively
       if (this.isOfflineRequest(error) && !isOfflineRetry) {
-        console.log(`📱 Going offline for endpoint: ${endpoint}`);
+        // Going offline for endpoint
         return this.handleOfflineRequest<T>(endpoint, method, body);
       }
       
@@ -464,7 +464,7 @@ class ApiService {
         // Backend connection error detected - silent
         BackendErrorService.handleBackendError(() => {
           // Retry callback
-          console.log('🔄 Retrying failed request after error modal');
+          // Retrying failed request after error modal
           return this.request(endpoint, method, body, 0, false);
         });
       }
@@ -517,7 +517,7 @@ class ApiService {
     method: string, 
     body?: any
   ): Promise<ApiResponse<T>> {
-    console.log('📱 Handling offline request:', endpoint);
+    // Handling offline request
     
     // For GET requests, try to return cached data
     if (method === 'GET') {
@@ -525,7 +525,7 @@ class ApiService {
       const cached = await this.getFromCache<T>(cacheKey);
       
       if (cached) {
-        console.log('📱 Returning cached data for offline request');
+        // Returning cached data for offline request
         return {
           success: true,
           data: cached,
@@ -542,7 +542,7 @@ class ApiService {
         body,
         timestamp: Date.now()
       });
-      console.log('📱 Request queued for later execution');
+      // Request queued for later execution
     }
     
     // Return offline response
@@ -559,7 +559,7 @@ class ApiService {
       return;
     }
     
-    console.log(`📱 Processing ${this.offlineQueue.length} offline requests`);
+    // Processing offline requests
     
     const queue = [...this.offlineQueue];
     this.offlineQueue = [];
@@ -567,7 +567,7 @@ class ApiService {
     for (const item of queue) {
       try {
         await this.request(item.endpoint, item.method as any, item.body, 0, true);
-        console.log(`✅ Processed offline request: ${item.method} ${item.endpoint}`);
+        // Processed offline request
       } catch (error) {
         console.error(`❌ Failed to process offline request: ${item.method} ${item.endpoint}`, error);
         // Re-queue failed requests
@@ -605,7 +605,7 @@ class ApiService {
     return this.request('/users/login', 'POST', { email, password });
   }
 
-  // Enhanced product endpoints with better caching
+  // Enhanced product endpoints with better caching and pagination
   async getAllProducts(): Promise<ApiResponse<any[]>> {
     const cacheKey = this.getCacheKey('/products');
     const cached = await this.getFromCache<ApiResponse<any[]>>(cacheKey);
@@ -615,6 +615,22 @@ class ApiService {
     }
 
     const result = await this.request<any[]>('/products');
+    if (result.success) {
+      await this.setCache(cacheKey, result, result.isOffline);
+    }
+    return result;
+  }
+
+  // New paginated products endpoint
+  async getProducts(page: number = 1, limit: number = 20): Promise<ApiResponse<{ products: any[], total: number, hasMore: boolean }>> {
+    const cacheKey = this.getCacheKey(`/products?page=${page}&limit=${limit}`);
+    const cached = await this.getFromCache<ApiResponse<{ products: any[], total: number, hasMore: boolean }>>(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+
+    const result = await this.request<{ products: any[], total: number, hasMore: boolean }>(`/products?page=${page}&limit=${limit}`);
     if (result.success) {
       await this.setCache(cacheKey, result, result.isOffline);
     }
@@ -907,7 +923,7 @@ class ApiService {
   // Enhanced cache management
   clearCache(): void {
     this.cache.clear();
-    console.log('🗑️ Cache cleared');
+    // Cache cleared
   }
 
   clearCacheByPattern(pattern: string): void {
@@ -919,13 +935,13 @@ class ApiService {
     });
     
     keysToDelete.forEach(key => this.cache.delete(key));
-    console.log(`🗑️ Cleared ${keysToDelete.length} cache entries matching pattern: ${pattern}`);
+    // Cleared cache entries matching pattern
   }
 
   // Enhanced connection testing with auto-detection
   async testConnection(): Promise<ApiResponse<boolean>> {
     try {
-      console.log('🔍 Testing API connection...');
+      // Testing API connection
       
       // Quick timeout for health check
       const healthTimeout = new Promise<never>((_, reject) => {
@@ -942,11 +958,11 @@ class ApiService {
       this.consecutiveFailures = 0;
       
       if (result.success) {
-        console.log('✅ API connection successful');
+        // API connection successful
         // Process any queued offline requests
         await this.processOfflineQueue();
       } else {
-        console.log('⚠️ API connection failed, trying auto-detection...');
+        // API connection failed, trying auto-detection
         
         // Try auto-detection if health check failed
         try {
@@ -955,7 +971,7 @@ class ApiService {
             // Test again with new URL
             const retryResult = await this.request<boolean>('/health');
             if (retryResult.success) {
-              console.log('✅ API connection successful with new URL');
+              // API connection successful with new URL
               this.isOnline = true;
               await this.processOfflineQueue();
               return retryResult;
@@ -968,7 +984,7 @@ class ApiService {
       
       return result;
     } catch (error) {
-      console.log('❌ API connection test failed:', error);
+      // API connection test failed
       this.isOnline = false;
       this.lastOnlineCheck = Date.now();
       this.consecutiveFailures = 0;
@@ -985,7 +1001,7 @@ class ApiService {
     try {
       // If we're already offline, don't check immediately
       if (!this.isOnline) {
-        console.log('📱 Already offline, skipping immediate check');
+        // Already offline, skipping immediate check
         return false;
       }
       
@@ -996,7 +1012,7 @@ class ApiService {
       
       // If we're back online, process offline queue
       if (this.isOnline && this.offlineQueue.length > 0) {
-        console.log(`📱 Processing ${this.offlineQueue.length} offline requests...`);
+        // Processing offline requests
         await this.processOfflineQueue();
       }
       
@@ -1030,7 +1046,7 @@ class ApiService {
           this.consecutiveFailures++;
           currentInterval = Math.min(currentInterval * 1.5, 120000); // Max 2 minutes
           
-          console.log(`📡 Network check failed (${this.consecutiveFailures} consecutive), next check in ${currentInterval}ms`);
+          // Network check failed, next check scheduled
           
           // Update interval
           clearInterval(this.networkMonitoringInterval!);
@@ -1043,20 +1059,20 @@ class ApiService {
       }
     }, currentInterval);
     
-    console.log(`📡 Network monitoring started (${currentInterval}ms interval)`);
+    // Network monitoring started
   }
 
   stopNetworkMonitoring(): void {
     if (this.networkMonitoringInterval) {
       clearInterval(this.networkMonitoringInterval);
       this.networkMonitoringInterval = null;
-      console.log('📡 Network monitoring stopped');
+      // Network monitoring stopped
     }
   }
 
   // Force offline mode for testing or when network is definitely down
   forceOfflineMode(): void {
-    console.log('📱 Force offline mode activated');
+    // Force offline mode activated
     this.isOnline = false;
     this.stopNetworkMonitoring();
   }

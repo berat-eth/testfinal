@@ -515,7 +515,7 @@ const TabNavigator = () => {
   const insets = useSafeAreaInsets();
   const cartItemCount = state.cart.itemCount || 0;
   
-  console.log('📊 TabNavigator cart state:', { cartItemCount, totalItems: state.cart.items?.length || 0 });
+  // TabNavigator cart state
 
   // Uygulama başladığında sepet state'ini yükle
   useEffect(() => {
@@ -523,12 +523,12 @@ const TabNavigator = () => {
       try {
         const userId = 1; // Default guest user ID
         const cartItems = await CartController.getCartItems(userId);
-        console.log('🚀 Initial cart load:', { itemsLength: cartItems?.length || 0, cartItems });
+        // Initial cart load
         
         // Sepet boş olsa bile context'i güncelle
         const subtotal = CartController.calculateSubtotal(cartItems || []);
         const itemCount = (cartItems || []).reduce((total, item) => total + item.quantity, 0);
-        console.log('🚀 Initial cart context update:', { itemCount, subtotal });
+        // Initial cart context update
         
         updateCart({
           items: cartItems || [],

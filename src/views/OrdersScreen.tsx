@@ -39,7 +39,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({ navigation }) => {
       setLoading(true);
       const userId = await UserController.getCurrentUserId(); // Get current user ID
       const userOrders = await OrderController.getUserOrders(userId);
-      console.log('📦 Orders loaded:', { count: userOrders.length, orders: userOrders });
+      // Orders loaded
       setOrders(userOrders);
     } catch (error) {
       console.error('Error loading orders:', error);

@@ -1685,15 +1685,34 @@ app.get('/api/admin/products', authenticateAdmin, async (req, res) => {
 // Product endpoints (with tenant authentication)
 app.get('/api/products', authenticateTenant, async (req, res) => {
   try {
-    const [rows] = await poolWrapper.execute(
-      'SELECT * FROM products WHERE tenantId = ? ORDER BY lastUpdated DESC',
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+    
+    // Get total count
+    const [countRows] = await poolWrapper.execute(
+      'SELECT COUNT(*) as total FROM products WHERE tenantId = ?',
       [req.tenant.id]
+    );
+    const total = countRows[0].total;
+    
+    // Get paginated products
+    const [rows] = await poolWrapper.execute(
+      'SELECT * FROM products WHERE tenantId = ? ORDER BY lastUpdated DESC LIMIT ? OFFSET ?',
+      [req.tenant.id, limit, offset]
     );
     
     // Clean HTML entities from all products
     const cleanedProducts = rows.map(cleanProductData);
     
-    res.json({ success: true, data: cleanedProducts });
+    res.json({ 
+      success: true, 
+      data: {
+        products: cleanedProducts,
+        total: total,
+        hasMore: offset + limit < total
+      }
+    });
   } catch (error) {
     console.error('Error getting products:', error);
     res.status(500).json({ success: false, message: 'Error getting products' });

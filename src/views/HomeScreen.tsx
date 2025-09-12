@@ -165,11 +165,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [allProducts, cats] = await Promise.all([
+      const [allProductsResponse, cats] = await Promise.all([
         ProductController.getAllProducts(),
         ProductController.getAllCategories(),
       ]);
 
+      const allProducts = allProductsResponse?.products || [];
       if (allProducts && allProducts.length > 0) {
         // Önce popüler ürünleri yükle (rating'e göre sırala)
         const popularProducts = allProducts
@@ -239,7 +240,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const refreshPopularProducts = async () => {
     try {
-      const allProducts = await ProductController.getAllProducts();
+      const allProductsResponse = await ProductController.getAllProducts();
+      const allProducts = allProductsResponse?.products || [];
       if (allProducts && allProducts.length > 0) {
         // Yeni ürünlerle çakışmayacak şekilde random ürünler seç
         const randomProducts = getUniqueProducts(
@@ -383,7 +385,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           const subtotal = CartController.calculateSubtotal(cartItems);
           const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
           
-          console.log('🛒 Cart updated:', { itemCount, subtotal, itemsLength: cartItems.length });
+          // Cart updated
           
           updateCart({
             items: cartItems,

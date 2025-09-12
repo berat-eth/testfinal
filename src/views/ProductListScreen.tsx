@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -42,6 +42,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(route.params?.category || null);
   const [categories, setCategories] = useState<string[]>([]);
@@ -61,6 +62,12 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [pagerEnabled, setPagerEnabled] = useState<boolean>(true);
   const nowIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Pagination state
+  const [currentPageNum, setCurrentPageNum] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const ITEMS_PER_PAGE = 20;
 
   const searchInputRef = useRef<TextInput>(null);
 
@@ -91,23 +98,49 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     applyFiltersAndSort();
   }, [products, searchQuery, sortBy, filters]);
 
-  const loadData = async () => {
+  const loadData = async (page: number = 1, append: boolean = false) => {
     try {
-      setLoading(true);
-      const [allProducts, allCategories] = await Promise.all([
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      
+      const [productsResult, allCategories] = await Promise.all([
         selectedCategory 
           ? ProductController.getProductsByCategory(selectedCategory)
-          : ProductController.getAllProducts(),
+          : ProductController.getAllProducts(page, ITEMS_PER_PAGE),
         ProductController.getAllCategories(),
       ]);
       
-      setProducts(Array.isArray(allProducts) ? allProducts : []);
+      if (selectedCategory) {
+        // For category products, use legacy method
+        const allProducts = Array.isArray(productsResult) ? productsResult : [];
+        setProducts(allProducts);
+        setFilteredProducts(allProducts);
+        setTotalProducts(allProducts.length);
+        setHasMore(false);
+      } else {
+        // For paginated products
+        const { products: newProducts, total, hasMore: hasMoreProducts } = productsResult as any;
+        const allProducts = Array.isArray(newProducts) ? newProducts : [];
+        
+        if (append) {
+          setProducts(prev => [...prev, ...allProducts]);
+        } else {
+          setProducts(allProducts);
+        }
+        setFilteredProducts(append ? [...products, ...allProducts] : allProducts);
+        setTotalProducts(total || 0);
+        setHasMore(hasMoreProducts || false);
+      }
+      
       setCategories(Array.isArray(allCategories) ? allCategories : []);
-      setFilteredProducts(Array.isArray(allProducts) ? allProducts : []);
     } catch (error) {
       console.error('Error loading products:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -123,11 +156,21 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    setCurrentPageNum(1);
+    setHasMore(true);
+    await loadData(1, false);
     setRefreshing(false);
   };
 
-  const applyFiltersAndSort = () => {
+  const loadMore = async () => {
+    if (!hasMore || loadingMore || selectedCategory) return;
+    
+    const nextPage = currentPageNum + 1;
+    setCurrentPageNum(nextPage);
+    await loadData(nextPage, true);
+  };
+
+  const applyFiltersAndSort = useCallback(() => {
     let filtered = [...products];
 
     // Search filter
@@ -176,7 +219,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     }
 
     setFilteredProducts(filtered);
-  };
+  }, [products, searchQuery, filters, sortBy]);
 
   const handleProductPress = (product: Product) => {
     navigation.navigate('ProductDetail', { productId: product.id });
@@ -529,7 +572,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     </View>
   );
 
-  const renderProduct = ({ item, index }: { item: Product; index: number }) => {
+  const renderProduct = useCallback(({ item, index }: { item: Product; index: number }) => {
     if (viewMode === 'list') {
       return (
         <ModernProductCard
@@ -560,7 +603,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
         />
       </View>
     );
-  };
+  }, [viewMode, favoriteProducts, width]);
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -586,6 +629,29 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
       />
     </View>
   );
+
+  const renderFooter = () => {
+    if (selectedCategory) return null;
+    
+    if (loadingMore) {
+      return (
+        <View style={styles.footerLoading}>
+          <LoadingIndicator />
+          <Text style={styles.footerLoadingText}>Daha fazla ürün yükleniyor...</Text>
+        </View>
+      );
+    }
+    
+    if (!hasMore && products.length > 0) {
+      return (
+        <View style={styles.footerEnd}>
+          <Text style={styles.footerEndText}>Tüm ürünler yüklendi</Text>
+        </View>
+      );
+    }
+    
+    return null;
+  };
 
   if (loading) {
     return <LoadingIndicator />;
@@ -631,6 +697,19 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
               />
             }
             ListEmptyComponent={renderEmptyState}
+            ListFooterComponent={renderFooter}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.5}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={20}
+            windowSize={10}
+            getItemLayout={viewMode === 'grid' ? undefined : (data, index) => ({
+              length: 120,
+              offset: 120 * index,
+              index,
+            })}
           />
         </View>
         <View style={{ width: width }}>
@@ -877,6 +956,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textLight,
     textAlign: 'center',
+  },
+  footerLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.lg,
+  },
+  footerLoadingText: {
+    fontSize: 14,
+    color: Colors.textLight,
+    marginLeft: Spacing.sm,
+  },
+  footerEnd: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
+  },
+  footerEndText: {
+    fontSize: 14,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
   },
   topTabsWrap: {
     flexDirection: 'row',

@@ -75,14 +75,14 @@ export const CartScreen: React.FC<CartScreenProps> = ({ navigation }) => {
         CartController.getCartItems(userIdValue),
         DiscountWheelController.getUserDiscountCodes(userIdValue)
       ]);
-      console.log('🛒 CartScreen loadCart:', { itemsLength: items?.length || 0, items });
+      // CartScreen loadCart
       setCartItems(items || []);
       setDiscountCodes(codes || []);
       
       // Update global context
       const subtotal = CartController.calculateSubtotal(items || []);
       const itemCount = (items || []).reduce((total, item) => total + item.quantity, 0);
-      console.log('🛒 CartScreen updating context:', { itemCount, subtotal });
+      // CartScreen updating context
       updateCart({
         items: items || [],
         total: subtotal,

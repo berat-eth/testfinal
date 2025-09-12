@@ -71,15 +71,15 @@ export const AddressesScreen: React.FC<AddressesScreenProps> = ({ navigation, ro
     try {
       setLoading(true);
       const userId = await UserController.getCurrentUserId();
-      console.log('🔍 Current user ID:', userId);
+      // Current user ID retrieved
       
       if (userId && userId > 0) {
         setCurrentUserId(userId);
         const userAddresses = await UserController.getUserAddresses(userId);
-        console.log('📍 Loaded addresses:', userAddresses.length);
+        // Loaded addresses
         setAddresses(userAddresses);
       } else {
-        console.warn('⚠️ No valid user ID found');
+        // No valid user ID found
         setAddresses([]);
       }
     } catch (error) {
@@ -149,7 +149,7 @@ export const AddressesScreen: React.FC<AddressesScreenProps> = ({ navigation, ro
   const handleSaveAddress = async () => {
     // Get current user ID
     const userId = currentUserId || await UserController.getCurrentUserId();
-    console.log('💾 Saving address for user ID:', userId);
+    // Saving address for user ID
     
     if (!userId || userId <= 0) {
       Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.');

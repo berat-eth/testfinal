@@ -157,20 +157,20 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       shouldBeDark = false;
     }
     
-    console.log('🎨 Updating theme mode:', mode, 'isDark:', shouldBeDark);
+    // Updating theme mode
     setIsDark(shouldBeDark);
     
     // StatusBar is now handled by expo-status-bar automatically
-    console.log('StatusBar will be updated automatically by expo-status-bar');
-    console.log('✅ Theme updated successfully');
+    // StatusBar will be updated automatically by expo-status-bar
+    // Theme updated successfully
   };
 
   const setThemeMode = async (newMode: ThemeMode) => {
     try {
-      console.log('🎨 Setting theme mode from', mode, 'to', newMode);
+      // Setting theme mode
       await AsyncStorage.setItem(STORAGE_KEY, newMode);
       setMode(newMode);
-      console.log('✅ Theme mode saved successfully');
+      // Theme mode saved successfully
     } catch (error) {
       console.error('❌ Error saving theme mode:', error);
     }

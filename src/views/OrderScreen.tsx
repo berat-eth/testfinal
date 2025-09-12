@@ -112,14 +112,7 @@ export const OrderScreen: React.FC<OrderScreenProps> = ({ navigation, route }) =
       
       const userId = await UserController.getCurrentUserId(); // Get current user ID
       
-      console.log('🚀 Creating order with data:', {
-        userId,
-        shippingAddress,
-        paymentMethod,
-        city: deliveryInfo.city,
-        district: deliveryInfo.district,
-        fullAddress
-      });
+      // Creating order with data
       
       const result = await OrderController.createOrder(
         userId,
@@ -131,7 +124,7 @@ export const OrderScreen: React.FC<OrderScreenProps> = ({ navigation, route }) =
       );
 
       if (result.success) {
-        console.log('✅ Order created successfully:', result.orderId);
+        // Order created successfully
         
         // Clear cart after successful order
         await CartController.clearCart(1);
@@ -168,7 +161,7 @@ export const OrderScreen: React.FC<OrderScreenProps> = ({ navigation, route }) =
           ]
         );
       } else {
-        console.log('❌ Order creation failed:', result.message);
+        // Order creation failed
         Alert.alert('Hata', result.message);
       }
     } catch (error) {

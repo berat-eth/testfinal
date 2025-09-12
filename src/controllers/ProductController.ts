@@ -5,41 +5,67 @@ import { apiService } from '../utils/api-service';
 import { CacheService, CacheTTL } from '../services/CacheService';
 
 export class ProductController {
-  // Enhanced product fetching with better offline support
-  static async getAllProducts(): Promise<Product[]> {
+  // Enhanced product fetching with pagination and better offline support
+  static async getAllProducts(page: number = 1, limit: number = 20): Promise<{ products: Product[], total: number, hasMore: boolean }> {
     try {
-      console.log('🔄 Fetching all products...');
-      
-      // Try cache first
-      const cached = await CacheService.get<Product[]>('cache:products:all');
-      if (cached && cached.length) {
-        console.log(`🧠 Cache hit: ${cached.length} products`);
-        return cached;
+      // Try cache first for first page
+      if (page === 1) {
+        const cached = await CacheService.get<Product[]>('cache:products:all');
+        if (cached && cached.length) {
+          // Return first page from cache
+          const paginatedProducts = cached.slice(0, limit);
+          return {
+            products: paginatedProducts,
+            total: cached.length,
+            hasMore: cached.length > limit
+          };
+        }
       }
 
-      // Try API
-      const response = await apiService.getAllProducts();
+      // Try API with pagination
+      const response = await apiService.getProducts(page, limit);
       if (response.success && Array.isArray(response.data)) {
-        console.log(`✅ API returned ${response.data.length} products`);
         const products = response.data.map((apiProduct: any) => this.mapApiProductToAppProduct(apiProduct));
-        CacheService.set('cache:products:all', products, CacheTTL.MEDIUM).catch(() => {});
-        return products;
+        
+        // Cache first page
+        if (page === 1) {
+          CacheService.set('cache:products:all', products, CacheTTL.MEDIUM).catch(() => {});
+        }
+        
+        return {
+          products,
+          total: response.total || products.length,
+          hasMore: response.hasMore || false
+        };
       }
       
-      // Fallback to XML service
-      console.log('🔄 API fallback to XML service');
-      const xmlProducts = await XmlProductService.fetchProducts();
-      const products = xmlProducts.map(xmlProduct => 
-        XmlProductService.convertXmlProductToAppProduct(xmlProduct)
-      );
-      CacheService.set('cache:products:all', products, CacheTTL.SHORT).catch(() => {});
-      return products;
+      // Fallback to XML service (only for first page)
+      if (page === 1) {
+        const xmlProducts = await XmlProductService.fetchProducts();
+        const products = xmlProducts.map(xmlProduct => 
+          XmlProductService.convertXmlProductToAppProduct(xmlProduct)
+        );
+        CacheService.set('cache:products:all', products, CacheTTL.SHORT).catch(() => {});
+        
+        const paginatedProducts = products.slice(0, limit);
+        return {
+          products: paginatedProducts,
+          total: products.length,
+          hasMore: products.length > limit
+        };
+      }
+      
+      return { products: [], total: 0, hasMore: false };
     } catch (error) {
       console.error('❌ ProductController - getAllProducts error:', error);
-      
-      // Return empty array as fallback
-      return [];
+      return { products: [], total: 0, hasMore: false };
     }
+  }
+
+  // Legacy method for backward compatibility
+  static async getAllProductsLegacy(): Promise<Product[]> {
+    const result = await this.getAllProducts(1, 1000);
+    return result.products;
   }
 
   static async getProductById(id: number): Promise<Product | null> {
