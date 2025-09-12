@@ -1,4 +1,4 @@
-// API Configuration for Remote Server
+// API Configuration for App API Server
 export interface ApiConfig {
   baseUrl: string;
   timeout: number;
