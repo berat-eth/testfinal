@@ -1,7 +1,7 @@
 // Admin Panel JavaScript
 
 // Configuration - Updated for Remote Server
-const API_BASE = 'https://zerodaysoftware.tr/api';
+const API_BASE = 'http://213.142.159.135:3000/api';
 // Güvenlik: Hardcoded admin anahtarı kaldırıldı. Geçici olarak localStorage üzerinden okunur.
 const ADMIN_KEY = (function() {
     try {
@@ -66,19 +66,30 @@ function showConnectionError() {
     const errorHtml = `
         <div class="connection-error">
             <div class="error-icon">⚠️</div>
-            <h3>Backend Bağlantı Sorunu</h3>
-            <p>Admin paneli backend sunucusuna bağlanamıyor.</p>
+            <h3>Uzak Sunucu Bağlantı Sorunu</h3>
+            <p>Admin paneli uzak sunucuya bağlanamıyor.</p>
             <div class="error-details">
                 <p><strong>Kontrol edilecekler:</strong></p>
                 <ul>
-                    <li>Backend sunucusu çalışıyor mu? (port 3000)</li>
+                    <li>Uzak sunucu çalışıyor mu? (213.142.159.135:3000)</li>
                     <li>URL doğru mu: <code>${API_BASE}</code></li>
                     <li>CORS ayarları yapıldı mı?</li>
+                    <li>İnternet bağlantısı var mı?</li>
+                    <li>Firewall engellemesi var mı?</li>
                 </ul>
+                <div class="connection-info">
+                    <p><strong>Bağlantı Bilgileri:</strong></p>
+                    <p>🌐 Uzak Sunucu: 213.142.159.135:3000</p>
+                    <p>🔧 Admin Panel: localhost:8080</p>
+                    <p>📡 API Endpoint: ${API_BASE}</p>
+                </div>
             </div>
             <div class="error-actions">
                 <button onclick="checkBackendConnection()" class="btn-primary">
                     <i class="fas fa-sync"></i> Tekrar Dene
+                </button>
+                <button onclick="testConnection()" class="btn-secondary">
+                    <i class="fas fa-network-wired"></i> Bağlantı Testi
                 </button>
                 <button onclick="openBackendInstructions()" class="btn-secondary">
                     <i class="fas fa-question-circle"></i> Yardım
@@ -94,24 +105,59 @@ function showConnectionError() {
     }
 }
 
+// Bağlantı testi fonksiyonu
+async function testConnection() {
+    showLoading(true);
+    showNotification('Bağlantı testi yapılıyor...', 'info');
+    
+    try {
+        // Ping testi
+        const pingStart = Date.now();
+        const pingResponse = await fetch(`${API_BASE}/health`, {
+            method: 'GET',
+            mode: 'cors'
+        });
+        const pingTime = Date.now() - pingStart;
+        
+        if (pingResponse.ok) {
+            const healthData = await pingResponse.json();
+            showNotification(`✅ Bağlantı başarılı! Ping: ${pingTime}ms`, 'success');
+            console.log('Health check data:', healthData);
+        } else {
+            throw new Error(`HTTP ${pingResponse.status}: ${pingResponse.statusText}`);
+        }
+    } catch (error) {
+        console.error('Connection test failed:', error);
+        showNotification(`❌ Bağlantı başarısız: ${error.message}`, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
 function openBackendInstructions() {
     const instructions = `
-Backend Sunucusunu Başlatma:
+Uzak Sunucu Bağlantı Sorunları:
 
-1. Terminal/Command Prompt açın
-2. Proje klasörüne gidin:
-   cd ${window.location.pathname.replace('/admin-panel', '').replace('/index.html', '')}
+1. Uzak Sunucu Kontrolü:
+   - IP: 213.142.159.135
+   - Port: 3000
+   - URL: http://213.142.159.135:3000/api
 
-3. Server klasörüne gidin:
-   cd server
+2. CORS Ayarları:
+   - Uzak sunucuda CORS tüm origin'lere açık olmalı
+   - origin: true ayarı yapılmış olmalı
 
-4. Sunucuyu başlatın:
-   node server.js
+3. Firewall Kontrolü:
+   - Port 3000'in açık olduğundan emin olun
+   - İnternet bağlantınızı kontrol edin
 
-5. Şu mesajı görmelisiniz:
-   "🚀 Server is running on port 3000"
+4. Test Komutları:
+   - curl http://213.142.159.135:3000/api/health
+   - ping 213.142.159.135
 
-6. Admin panelini yenileyin veya "Tekrar Dene" butonuna tıklayın.
+5. Admin Panel:
+   - localhost:8080'de çalışıyor
+   - Uzak sunucuya API istekleri gönderiyor
     `;
     
     alert(instructions);
@@ -1609,6 +1655,7 @@ window.refreshDashboard = refreshDashboard;
 window.triggerProductSync = triggerProductSync;
 window.updateOrderStatus = updateOrderStatus;
 window.checkBackendConnection = checkBackendConnection;
+window.testConnection = testConnection;
 window.openBackendInstructions = openBackendInstructions;
 window.showOrderDetails = showOrderDetails;
 window.closeOrderModal = closeOrderModal;

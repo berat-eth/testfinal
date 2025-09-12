@@ -31,6 +31,7 @@ if __name__ == "__main__":
         print(f"📱 Server running at: http://localhost:{PORT}")
         print(f"🔑 Admin Key: huglu-admin-2024-secure-key")
         print(f"🌐 Backend API: http://213.142.159.135:3000/api")
+        print(f"🔧 Admin Panel: http://localhost:{PORT}")
         print(f"⚠️  Make sure your backend server is running on remote server")
         print(f"🌐 Opening browser in 2 seconds...")
         
