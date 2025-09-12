@@ -14,8 +14,11 @@ export class CartController {
     success: boolean;
     message: string;
   }> {
+    // Cihaz bazlı misafir sepet izolasyonu
+    let deviceId: string | undefined = undefined;
+    
     try {
-      console.log(`🛒 Adding to cart: product ${productId}, quantity ${quantity}, user ${userId}`);
+      // Adding to cartn
       
       // Stok kontrolü
       const hasStock = await ProductController.checkStock(productId, quantity, selectedVariations);
@@ -28,15 +31,12 @@ export class CartController {
         Object.entries(selectedVariations)
           .map(([key, option]) => `${key}: ${option.value}`)
           .join(', ') : '';
-
-      // Cihaz bazlı misafir sepet izolasyonu
-      let deviceId: string | undefined = undefined;
       if (userId === 1) {
         try {
           const { DiscountWheelController } = require('./DiscountWheelController');
           deviceId = await DiscountWheelController.getDeviceId();
         } catch (e) {
-          console.warn('⚠️ deviceId alınamadı, misafir sepet izolasyonu zayıflar:', e);
+          // deviceId alınamadı, misafir sepet izolasyonu zayıflar
         }
       }
 
@@ -52,10 +52,10 @@ export class CartController {
       const response = await apiService.addToCart(cartData);
 
       if (response.success) {
-        console.log(`✅ Product added to cart successfully: ${productId}`);
+        // Product added to cart successfully
         return { success: true, message: 'Ürün sepete eklendi' };
       } else {
-        console.log(`❌ Failed to add to cart: ${response.message}`);
+        // Failed to add to cart
         return { success: false, message: response.message || 'Ürün sepete eklenemedi' };
       }
     } catch (error) {
@@ -68,7 +68,7 @@ export class CartController {
           productId,
           quantity,
           selectedVariations,
-          deviceId
+          deviceId: deviceId || undefined
         });
         return { success: false, message: 'Çevrimdışı mod - ürün ekleme isteği kuyruğa eklendi' };
       }
@@ -82,15 +82,15 @@ export class CartController {
     message: string;
   }> {
     try {
-      console.log(`🗑️ Removing from cart: item ${cartItemId}`);
+      // Removing from cart
       
       const response = await apiService.removeFromCart(cartItemId);
       
       if (response.success) {
-        console.log(`✅ Product removed from cart successfully: ${cartItemId}`);
+        // Product removed from cart successfully
         return { success: true, message: 'Ürün sepetten kaldırıldı' };
       } else {
-        console.log(`❌ Failed to remove from cart: ${response.message}`);
+        // Failed to remove from cart
         return { success: false, message: response.message || 'Ürün sepetten kaldırılamadı' };
       }
     } catch (error) {
@@ -111,7 +111,7 @@ export class CartController {
     message: string;
   }> {
     try {
-      console.log(`🔄 Updating cart quantity: item ${cartItemId}, quantity ${quantity}`);
+      // Updating cart quantity
       
       if (quantity < 0) {
         return { success: false, message: 'Miktar negatif olamaz' };
@@ -125,10 +125,10 @@ export class CartController {
       const response = await apiService.updateCartQuantity(cartItemId, quantity);
       
       if (response.success) {
-        console.log(`✅ Cart quantity updated successfully: ${cartItemId}`);
+        // Cart quantity updated successfully
         return { success: true, message: 'Miktar güncellendi' };
       } else {
-        console.log(`❌ Failed to update quantity: ${response.message}`);
+        // Failed to update quantity
         return { success: false, message: response.message || 'Miktar güncellenemedi' };
       }
     } catch (error) {
@@ -146,18 +146,18 @@ export class CartController {
 
   static async getCartItems(userId: number): Promise<CartItem[]> {
     try {
-      console.log(`🛒 Getting cart items for user: ${userId}`);
+      // Getting cart items for user
       
       const response = await apiService.getCartItems(userId);
       if (response.success && response.data && Array.isArray(response.data)) {
-        console.log(`✅ Retrieved ${response.data.length} cart items`);
+        // Retrieved cart items
         const cartItems = response.data.map((apiCartItem: any) => this.mapApiCartItemToAppCartItem(apiCartItem));
         
         // Validate cart items and remove invalid ones
         const validCartItems = cartItems.filter(item => item.productId && item.quantity > 0);
         
         if (validCartItems.length !== cartItems.length) {
-          console.warn(`⚠️ Found ${cartItems.length - validCartItems.length} invalid cart items`);
+          // Found invalid cart items
         }
         
         return validCartItems;
