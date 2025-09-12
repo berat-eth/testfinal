@@ -255,7 +255,7 @@ export const FavoritesScreen: React.FC<FavoritesScreenProps> = ({ navigation }) 
         style={styles.productImageContainer}
         onPress={() => handleProductPress(item)}
       >
-        {item.image ? (
+        {item.image && item.image.trim() !== '' ? (
           <Image
             source={{ uri: item.image }}
             style={styles.productImage}

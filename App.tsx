@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LogBox } from 'react-native';
+import './src/utils/console-config';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import apiService from './src/utils/api-service';

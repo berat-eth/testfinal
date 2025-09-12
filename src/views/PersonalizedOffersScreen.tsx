@@ -117,7 +117,10 @@ export default function PersonalizedOffersScreen() {
       style={styles.productCard}
       onPress={() => handleProductPress(product)}
     >
-      <Image source={{ uri: product.image }} style={styles.productImage} />
+      <Image 
+        source={{ uri: product.image || 'https://via.placeholder.com/300x300?text=No+Image' }} 
+        style={styles.productImage} 
+      />
       <View style={styles.productInfo}>
         <Text style={styles.productName} numberOfLines={2}>
           {product.name}

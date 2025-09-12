@@ -350,7 +350,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         {/* Ana Görsel */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: productImages[selectedImageIndex] || product.image }}
+            source={{ uri: productImages[selectedImageIndex] || product.image || 'https://via.placeholder.com/400x400?text=No+Image' }}
             style={styles.image}
             resizeMode="cover"
           />
