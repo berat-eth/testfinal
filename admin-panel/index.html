@@ -417,10 +417,30 @@
         <div class="content-section hidden" id="campaigns-section">
             <div class="section-header">
                 <h2>Kampanya Yönetimi</h2>
-                <button class="btn-primary" onclick="openCreateCampaignModal()">
-                    <i class="fas fa-plus"></i> Yeni Kampanya
-                </button>
+                <div class="header-actions">
+                    <button class="btn-primary" onclick="openCreateCampaignModal()">
+                        <i class="fas fa-plus"></i> Yeni Kampanya
+                    </button>
+                    <button class="btn-secondary" onclick="openCreateFlashDealModal()">
+                        <i class="fas fa-bolt"></i> Flash İndirim
+                    </button>
+                </div>
             </div>
+            
+            <!-- Campaign Tabs -->
+            <div class="campaign-tabs">
+                <div class="tab-buttons">
+                    <button class="tab-button active" onclick="showCampaignTab('regular')">
+                        <i class="fas fa-bullhorn"></i> Normal Kampanyalar
+                    </button>
+                    <button class="tab-button" onclick="showCampaignTab('flash')">
+                        <i class="fas fa-bolt"></i> Flash İndirimleri
+                    </button>
+                </div>
+                
+                <div class="tab-content">
+                    <!-- Regular Campaigns Tab -->
+                    <div id="regular-campaigns-tab" class="tab-panel active">
             
             <div class="campaigns-grid">
                 <div class="campaign-stats">
@@ -474,6 +494,67 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+                    </div>
+                    
+                    <!-- Flash Deals Tab -->
+                    <div id="flash-campaigns-tab" class="tab-panel">
+                        <div class="flash-deals-grid">
+                            <div class="flash-deals-stats">
+                                <div class="stat-card">
+                                    <div class="stat-icon" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24);">
+                                        <i class="fas fa-bolt"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <h3 id="totalFlashDealsCount">-</h3>
+                                        <p>Toplam Flash İndirim</p>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-icon" style="background: linear-gradient(135deg, #feca57, #ff9ff3);">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <h3 id="activeFlashDealsCount">-</h3>
+                                        <p>Aktif Flash İndirim</p>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-icon" style="background: linear-gradient(135deg, #48dbfb, #0abde3);">
+                                        <i class="fas fa-percentage"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <h3 id="averageFlashDiscount">-</h3>
+                                        <p>Ortalama İndirim</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>İndirim Adı</th>
+                                            <th>İndirim Türü</th>
+                                            <th>İndirim Değeri</th>
+                                            <th>Hedef</th>
+                                            <th>Başlangıç</th>
+                                            <th>Bitiş</th>
+                                            <th>Durum</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="flashDealsTableBody">
+                                        <tr>
+                                            <td colspan="9" class="loading">Yükleniyor...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -834,6 +915,85 @@
                         </button>
                         <button type="submit" class="btn-primary">
                             Segment Oluştur
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Deal Modal -->
+    <div class="modal hidden" id="createFlashDealModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Yeni Flash İndirim Oluştur</h3>
+                <button class="modal-close" onclick="closeModal('createFlashDealModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="createFlashDealForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="flashDealName">İndirim Adı *</label>
+                            <input type="text" id="flashDealName" name="name" required placeholder="Örn: Haftalık Flash İndirim">
+                        </div>
+                        <div class="form-group">
+                            <label for="flashDealDescription">Açıklama</label>
+                            <textarea id="flashDealDescription" name="description" rows="3" placeholder="İndirim hakkında açıklama..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="flashDealDiscountType">İndirim Türü *</label>
+                            <select id="flashDealDiscountType" name="discount_type" required onchange="updateDiscountInput()">
+                                <option value="">Seçiniz</option>
+                                <option value="percentage">Yüzde (%)</option>
+                                <option value="fixed">Sabit Tutar (₺)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="flashDealDiscountValue">İndirim Değeri *</label>
+                            <input type="number" id="flashDealDiscountValue" name="discount_value" required min="0" step="0.01" placeholder="0">
+                            <span id="discountValueSuffix">₺</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="flashDealTargetType">Hedef Türü *</label>
+                            <select id="flashDealTargetType" name="target_type" required onchange="updateTargetSelection()">
+                                <option value="">Seçiniz</option>
+                                <option value="category">Kategori</option>
+                                <option value="product">Ürün</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="flashDealTargetId">Hedef Seçimi *</label>
+                            <select id="flashDealTargetId" name="target_id" required disabled>
+                                <option value="">Önce hedef türü seçin</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="flashDealStartDate">Başlangıç Tarihi *</label>
+                            <input type="datetime-local" id="flashDealStartDate" name="start_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="flashDealEndDate">Bitiş Tarihi *</label>
+                            <input type="datetime-local" id="flashDealEndDate" name="end_date" required>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="closeModal('createFlashDealModal')">
+                            İptal
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-bolt"></i> Flash İndirim Oluştur
                         </button>
                     </div>
                 </form>

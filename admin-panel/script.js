@@ -1794,6 +1794,296 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// ==================== FLASH DEALS FUNCTIONS ====================
+
+let categories = [];
+let products = [];
+
+// Load categories and products for flash deal target selection
+async function loadCategoriesAndProducts() {
+    try {
+        // Load categories
+        const categoriesData = await apiRequest('/admin/categories');
+        if (categoriesData.success) {
+            categories = categoriesData.data;
+        }
+        
+        // Load products
+        const productsData = await apiRequest('/admin/products');
+        if (productsData.success) {
+            products = productsData.data;
+        }
+    } catch (error) {
+        console.error('Error loading categories and products:', error);
+    }
+}
+
+// Update discount input suffix based on type
+function updateDiscountInput() {
+    const discountType = document.getElementById('flashDealDiscountType').value;
+    const suffix = document.getElementById('discountValueSuffix');
+    
+    if (discountType === 'percentage') {
+        suffix.textContent = '%';
+        document.getElementById('flashDealDiscountValue').max = 100;
+    } else if (discountType === 'fixed') {
+        suffix.textContent = '₺';
+        document.getElementById('flashDealDiscountValue').max = 999999;
+    }
+}
+
+// Update target selection based on target type
+function updateTargetSelection() {
+    const targetType = document.getElementById('flashDealTargetType').value;
+    const targetSelect = document.getElementById('flashDealTargetId');
+    
+    // Clear existing options
+    targetSelect.innerHTML = '<option value="">Seçiniz</option>';
+    
+    if (targetType === 'category') {
+        targetSelect.disabled = false;
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            targetSelect.appendChild(option);
+        });
+    } else if (targetType === 'product') {
+        targetSelect.disabled = false;
+        products.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.id;
+            option.textContent = product.name;
+            targetSelect.appendChild(option);
+        });
+    } else {
+        targetSelect.disabled = true;
+    }
+}
+
+// Open flash deal modal
+function openCreateFlashDealModal() {
+    // Set default dates
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    document.getElementById('flashDealStartDate').value = tomorrow.toISOString().slice(0, 16);
+    document.getElementById('flashDealEndDate').value = nextWeek.toISOString().slice(0, 16);
+    
+    // Load categories and products
+    loadCategoriesAndProducts();
+    
+    // Show modal
+    document.getElementById('createFlashDealModal').classList.remove('hidden');
+}
+
+// Show campaign tab
+function showCampaignTab(tabName) {
+    // Hide all tab panels
+    document.querySelectorAll('#campaigns-section .tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('#campaigns-section .tab-button').forEach(button => {
+        button.classList.remove('active');
+    });
+    
+    // Show selected tab panel
+    const selectedPanel = document.getElementById(tabName + '-campaigns-tab');
+    if (selectedPanel) {
+        selectedPanel.classList.add('active');
+    }
+    
+    // Add active class to clicked button
+    event.target.classList.add('active');
+    
+    // Load data for the selected tab
+    if (tabName === 'flash') {
+        loadFlashDeals();
+    }
+}
+
+// Load flash deals
+async function loadFlashDeals() {
+    try {
+        console.log('⚡ Loading flash deals');
+        showLoading(true);
+        
+        const response = await apiRequest('/admin/flash-deals');
+        
+        if (response.success) {
+            displayFlashDeals(response.data);
+            updateFlashDealsStats(response.data);
+        } else {
+            throw new Error(response.message || 'Flash indirimleri yüklenemedi');
+        }
+    } catch (error) {
+        console.error('Error loading flash deals:', error);
+        showNotification('Flash indirimleri yüklenirken hata oluştu: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Display flash deals in table
+function displayFlashDeals(flashDeals) {
+    const tbody = document.getElementById('flashDealsTableBody');
+    
+    if (flashDeals.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="no-data">Flash indirim bulunamadı</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = flashDeals.map(deal => {
+        const now = new Date();
+        const startDate = new Date(deal.start_date);
+        const endDate = new Date(deal.end_date);
+        
+        let status = 'Beklemede';
+        let statusClass = 'pending';
+        
+        if (deal.is_active) {
+            if (now >= startDate && now <= endDate) {
+                status = 'Aktif';
+                statusClass = 'active';
+            } else if (now > endDate) {
+                status = 'Süresi Dolmuş';
+                statusClass = 'expired';
+            }
+        } else {
+            status = 'Pasif';
+            statusClass = 'inactive';
+        }
+        
+        const discountValue = deal.discount_type === 'percentage' 
+            ? `%${deal.discount_value}` 
+            : `${deal.discount_value} ₺`;
+        
+        return `
+            <tr>
+                <td>${deal.id}</td>
+                <td>${deal.name}</td>
+                <td>${deal.discount_type === 'percentage' ? 'Yüzde' : 'Sabit Tutar'}</td>
+                <td>${discountValue}</td>
+                <td>${deal.target_name || '-'}</td>
+                <td>${formatDateTime(deal.start_date)}</td>
+                <td>${formatDateTime(deal.end_date)}</td>
+                <td><span class="status ${statusClass}">${status}</span></td>
+                <td>
+                    <button class="btn-sm btn-primary" onclick="editFlashDeal(${deal.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-sm btn-danger" onclick="deleteFlashDeal(${deal.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Update flash deals statistics
+function updateFlashDealsStats(flashDeals) {
+    const totalCount = flashDeals.length;
+    const activeCount = flashDeals.filter(deal => {
+        const now = new Date();
+        const startDate = new Date(deal.start_date);
+        const endDate = new Date(deal.end_date);
+        return deal.is_active && now >= startDate && now <= endDate;
+    }).length;
+    
+    const averageDiscount = flashDeals.length > 0 
+        ? (flashDeals.reduce((sum, deal) => sum + parseFloat(deal.discount_value), 0) / flashDeals.length).toFixed(1)
+        : 0;
+    
+    document.getElementById('totalFlashDealsCount').textContent = totalCount;
+    document.getElementById('activeFlashDealsCount').textContent = activeCount;
+    document.getElementById('averageFlashDiscount').textContent = averageDiscount + (flashDeals[0]?.discount_type === 'percentage' ? '%' : '₺');
+}
+
+// Create flash deal
+async function createFlashDeal(formData) {
+    try {
+        console.log('⚡ Creating flash deal:', formData);
+        
+        const response = await apiRequest('/admin/flash-deals', {
+            method: 'POST',
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.success) {
+            showNotification('Flash indirim başarıyla oluşturuldu!', 'success');
+            closeModal('createFlashDealModal');
+            loadFlashDeals();
+        } else {
+            throw new Error(response.message || 'Flash indirim oluşturulamadı');
+        }
+    } catch (error) {
+        console.error('Error creating flash deal:', error);
+        showNotification('Flash indirim oluşturulurken hata oluştu: ' + error.message, 'error');
+    }
+}
+
+// Edit flash deal
+function editFlashDeal(id) {
+    console.log('Edit flash deal:', id);
+    showNotification('Flash indirim düzenleme özelliği yakında eklenecek', 'info');
+}
+
+// Delete flash deal
+async function deleteFlashDeal(id) {
+    if (!confirm('Bu flash indirimi silmek istediğinizden emin misiniz?')) {
+        return;
+    }
+    
+    try {
+        console.log('⚡ Deleting flash deal:', id);
+        
+        const response = await apiRequest(`/admin/flash-deals/${id}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.success) {
+            showNotification('Flash indirim başarıyla silindi!', 'success');
+            loadFlashDeals();
+        } else {
+            throw new Error(response.message || 'Flash indirim silinemedi');
+        }
+    } catch (error) {
+        console.error('Error deleting flash deal:', error);
+        showNotification('Flash indirim silinirken hata oluştu: ' + error.message, 'error');
+    }
+}
+
+// Handle flash deal form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const flashDealForm = document.getElementById('createFlashDealForm');
+    if (flashDealForm) {
+        flashDealForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(flashDealForm);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Validate required fields
+            if (!data.name || !data.discount_type || !data.discount_value || !data.target_type || !data.start_date || !data.end_date) {
+                showNotification('Lütfen tüm gerekli alanları doldurun', 'error');
+                return;
+            }
+            
+            // Validate target selection
+            if (data.target_type !== 'all' && !data.target_id) {
+                showNotification('Lütfen bir hedef seçin', 'error');
+                return;
+            }
+            
+            createFlashDeal(data);
+        });
+    }
+});
+
 // Export functions for global access
 window.refreshUsers = refreshUsers;
 window.refreshOrders = refreshOrders;
@@ -1821,6 +2111,13 @@ window.goBackToProducts = goBackToProducts;
 window.editProductDetail = editProductDetail;
 window.deleteProductDetail = deleteProductDetail;
 window.showProductTab = showProductTab;
+window.openCreateFlashDealModal = openCreateFlashDealModal;
+window.showCampaignTab = showCampaignTab;
+window.loadFlashDeals = loadFlashDeals;
+window.editFlashDeal = editFlashDeal;
+window.deleteFlashDeal = deleteFlashDeal;
+window.updateDiscountInput = updateDiscountInput;
+window.updateTargetSelection = updateTargetSelection;
 window.createWeeklyFlashDeal = async function createWeeklyFlashDeal() {
     try {
         const name = prompt('Kampanya adı (ör: Haftalık Flash İndirim):', 'Haftalık Flash İndirim');

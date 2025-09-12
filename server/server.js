@@ -1731,6 +1731,289 @@ app.get('/api/admin/products', authenticateAdmin, async (req, res) => {
   }
 });
 
+// Admin - Get single product (for admin panel)
+app.get('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const productId = req.params.id;
+    console.log('📦 Admin requesting product detail for ID:', productId);
+    
+    const [rows] = await poolWrapper.execute(
+      'SELECT * FROM products WHERE id = ?',
+      [productId]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Ürün bulunamadı' 
+      });
+    }
+    
+    // Clean HTML entities from product data
+    const cleanedProduct = cleanProductData(rows[0]);
+    
+    console.log('📦 Product detail found:', cleanedProduct.name);
+    res.json({ success: true, data: cleanedProduct });
+  } catch (error) {
+    console.error('Error getting product detail:', error);
+    res.status(500).json({ success: false, message: 'Error getting product detail' });
+  }
+});
+
+// ==================== FLASH DEALS API ====================
+
+// Create flash deals table if not exists
+async function createFlashDealsTable() {
+  try {
+    await poolWrapper.execute(`
+      CREATE TABLE IF NOT EXISTS flash_deals (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        discount_type ENUM('percentage', 'fixed') NOT NULL,
+        discount_value DECIMAL(10,2) NOT NULL,
+        target_type ENUM('category', 'product') NOT NULL,
+        target_id INT,
+        start_date DATETIME NOT NULL,
+        end_date DATETIME NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_active (is_active),
+        INDEX idx_dates (start_date, end_date),
+        INDEX idx_target (target_type, target_id)
+      )
+    `);
+    console.log('✅ Flash deals table created/verified');
+  } catch (error) {
+    console.error('❌ Error creating flash deals table:', error);
+  }
+}
+
+// Initialize flash deals table
+createFlashDealsTable();
+
+// Admin - Get all flash deals
+app.get('/api/admin/flash-deals', authenticateAdmin, async (req, res) => {
+  try {
+    console.log('⚡ Admin requesting flash deals');
+    
+    const [rows] = await poolWrapper.execute(`
+      SELECT fd.*, 
+             CASE 
+               WHEN fd.target_type = 'category' THEN c.name
+               WHEN fd.target_type = 'product' THEN p.name
+               ELSE 'Tüm Ürünler'
+             END as target_name
+      FROM flash_deals fd
+      LEFT JOIN categories c ON fd.target_type = 'category' AND fd.target_id = c.id
+      LEFT JOIN products p ON fd.target_type = 'product' AND fd.target_id = p.id
+      ORDER BY fd.created_at DESC
+    `);
+    
+    console.log('⚡ Flash deals found:', rows.length);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('❌ Error getting flash deals:', error);
+    res.status(500).json({ success: false, message: 'Error getting flash deals' });
+  }
+});
+
+// Admin - Create flash deal
+app.post('/api/admin/flash-deals', authenticateAdmin, async (req, res) => {
+  try {
+    const { name, description, discount_type, discount_value, target_type, target_id, start_date, end_date } = req.body;
+    
+    console.log('⚡ Creating flash deal:', { name, discount_type, discount_value, target_type, target_id });
+    
+    // Validate required fields
+    if (!name || !discount_type || !discount_value || !target_type || !start_date || !end_date) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Gerekli alanlar eksik' 
+      });
+    }
+    
+    // Validate discount type
+    if (!['percentage', 'fixed'].includes(discount_type)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Geçersiz indirim türü' 
+      });
+    }
+    
+    // Validate target type
+    if (!['category', 'product'].includes(target_type)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Geçersiz hedef türü' 
+      });
+    }
+    
+    // Validate dates
+    const startDate = new Date(start_date);
+    const endDate = new Date(end_date);
+    
+    if (startDate >= endDate) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Bitiş tarihi başlangıç tarihinden sonra olmalı' 
+      });
+    }
+    
+    // Check if target exists
+    if (target_type === 'category' && target_id) {
+      const [categoryRows] = await poolWrapper.execute('SELECT id FROM categories WHERE id = ?', [target_id]);
+      if (categoryRows.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Kategori bulunamadı' 
+        });
+      }
+    }
+    
+    if (target_type === 'product' && target_id) {
+      const [productRows] = await poolWrapper.execute('SELECT id FROM products WHERE id = ?', [target_id]);
+      if (productRows.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Ürün bulunamadı' 
+        });
+      }
+    }
+    
+    // Insert flash deal
+    const [result] = await poolWrapper.execute(`
+      INSERT INTO flash_deals (name, description, discount_type, discount_value, target_type, target_id, start_date, end_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [name, description, discount_type, discount_value, target_type, target_id, start_date, end_date]);
+    
+    console.log('⚡ Flash deal created with ID:', result.insertId);
+    res.json({ 
+      success: true, 
+      message: 'Flash indirim başarıyla oluşturuldu',
+      data: { id: result.insertId }
+    });
+  } catch (error) {
+    console.error('❌ Error creating flash deal:', error);
+    res.status(500).json({ success: false, message: 'Error creating flash deal' });
+  }
+});
+
+// Admin - Update flash deal
+app.put('/api/admin/flash-deals/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const flashDealId = req.params.id;
+    const { name, description, discount_type, discount_value, target_type, target_id, start_date, end_date, is_active } = req.body;
+    
+    console.log('⚡ Updating flash deal:', flashDealId);
+    
+    // Build update query dynamically
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (name !== undefined) { updateFields.push('name = ?'); updateValues.push(name); }
+    if (description !== undefined) { updateFields.push('description = ?'); updateValues.push(description); }
+    if (discount_type !== undefined) { updateFields.push('discount_type = ?'); updateValues.push(discount_type); }
+    if (discount_value !== undefined) { updateFields.push('discount_value = ?'); updateValues.push(discount_value); }
+    if (target_type !== undefined) { updateFields.push('target_type = ?'); updateValues.push(target_type); }
+    if (target_id !== undefined) { updateFields.push('target_id = ?'); updateValues.push(target_id); }
+    if (start_date !== undefined) { updateFields.push('start_date = ?'); updateValues.push(start_date); }
+    if (end_date !== undefined) { updateFields.push('end_date = ?'); updateValues.push(end_date); }
+    if (is_active !== undefined) { updateFields.push('is_active = ?'); updateValues.push(is_active); }
+    
+    if (updateFields.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Güncellenecek alan bulunamadı' 
+      });
+    }
+    
+    updateValues.push(flashDealId);
+    
+    const [result] = await poolWrapper.execute(`
+      UPDATE flash_deals 
+      SET ${updateFields.join(', ')}
+      WHERE id = ?
+    `, updateValues);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Flash indirim bulunamadı' 
+      });
+    }
+    
+    console.log('⚡ Flash deal updated:', flashDealId);
+    res.json({ 
+      success: true, 
+      message: 'Flash indirim başarıyla güncellendi' 
+    });
+  } catch (error) {
+    console.error('❌ Error updating flash deal:', error);
+    res.status(500).json({ success: false, message: 'Error updating flash deal' });
+  }
+});
+
+// Admin - Delete flash deal
+app.delete('/api/admin/flash-deals/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const flashDealId = req.params.id;
+    
+    console.log('⚡ Deleting flash deal:', flashDealId);
+    
+    const [result] = await poolWrapper.execute(
+      'DELETE FROM flash_deals WHERE id = ?',
+      [flashDealId]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Flash indirim bulunamadı' 
+      });
+    }
+    
+    console.log('⚡ Flash deal deleted:', flashDealId);
+    res.json({ 
+      success: true, 
+      message: 'Flash indirim başarıyla silindi' 
+    });
+  } catch (error) {
+    console.error('❌ Error deleting flash deal:', error);
+    res.status(500).json({ success: false, message: 'Error deleting flash deal' });
+  }
+});
+
+// Get active flash deals (for mobile app)
+app.get('/api/flash-deals', authenticateTenant, async (req, res) => {
+  try {
+    const now = new Date();
+    
+    const [rows] = await poolWrapper.execute(`
+      SELECT fd.*, 
+             CASE 
+               WHEN fd.target_type = 'category' THEN c.name
+               WHEN fd.target_type = 'product' THEN p.name
+               ELSE 'Tüm Ürünler'
+             END as target_name
+      FROM flash_deals fd
+      LEFT JOIN categories c ON fd.target_type = 'category' AND fd.target_id = c.id
+      LEFT JOIN products p ON fd.target_type = 'product' AND fd.target_id = p.id
+      WHERE fd.is_active = true 
+        AND fd.start_date <= ? 
+        AND fd.end_date >= ?
+      ORDER BY fd.created_at DESC
+    `, [now, now]);
+    
+    console.log('⚡ Active flash deals found:', rows.length);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('❌ Error getting active flash deals:', error);
+    res.status(500).json({ success: false, message: 'Error getting flash deals' });
+  }
+});
+
 // Product endpoints (with tenant authentication)
 app.get('/api/products', authenticateTenant, async (req, res) => {
   try {
