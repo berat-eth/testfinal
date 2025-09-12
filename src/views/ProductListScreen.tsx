@@ -367,8 +367,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     </View>
   );
 
-
-
   const renderCategories = () => (
     <View style={styles.categoriesSection}>
       <LinearGradient
@@ -465,33 +463,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     </View>
   );
 
-  const getCategoryIcon = (category: string) => {
-    const iconMap: { [key: string]: any } = {
-      'Mont': require('../../assets/kategori_icon/mont.png'),
-      'Pantolon': require('../../assets/kategori_icon/pantolon.png'),
-      'Gömlek': require('../../assets/kategori_icon/gömlek.png'),
-      'Hırka': require('../../assets/kategori_icon/hırka.png'),
-      'Eşofmanlar': require('../../assets/kategori_icon/esofman.png'),
-      'Bandana': require('../../assets/kategori_icon/bandana.png'),
-      'Battaniye': require('../../assets/kategori_icon/battaniye.png'),
-      'Kamp Ürünleri': require('../../assets/kategori_icon/camp ürünleri.png'),
-      'Polar Bere': require('../../assets/kategori_icon/polar bere.png'),
-      'Rüzgarlık': require('../../assets/kategori_icon/rüzgarlık.png'),
-      'Şapka': require('../../assets/kategori_icon/şapka.png'),
-      'Hoodie': require('../../assets/kategori_icon/hoodie_4696583.png'),
-      'Mutfak Ürünleri': require('../../assets/kategori_icon/mutfsk ürünleri.png'),
-      'Silah Aksesuar': require('../../assets/kategori_icon/silah aksuar.png'),
-      'Silah Aksesuarları': require('../../assets/kategori_icon/silah aksuar.png'),
-      'Tişört': require('../../assets/kategori_icon/tişört.png'),
-      'T-Shirt': require('../../assets/kategori_icon/tişört.png'),
-      'Sweatshirt': require('../../assets/kategori_icon/hoodie_4696583.png'),
-      'Yelek': require('../../assets/kategori_icon/waistcoat_6229344.png'),
-      'Yardımcı Giyim Ürünleri': require('../../assets/kategori_icon/aplike.png'),
-      'Yağmurluk': require('../../assets/kategori_icon/yağmurluk.png'),
-    };
-    return iconMap[category] || null;
-  };
-
   const renderSortAndView = () => (
     <View style={styles.sortViewContainer}>
       <View style={styles.resultCount}>
@@ -558,6 +529,35 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
       </View>
     </View>
   );
+
+
+
+  const getCategoryIcon = (category: string) => {
+    const iconMap: { [key: string]: any } = {
+      'Mont': require('../../assets/kategori_icon/mont.png'),
+      'Pantolon': require('../../assets/kategori_icon/pantolon.png'),
+      'Gömlek': require('../../assets/kategori_icon/gömlek.png'),
+      'Hırka': require('../../assets/kategori_icon/hırka.png'),
+      'Eşofmanlar': require('../../assets/kategori_icon/esofman.png'),
+      'Bandana': require('../../assets/kategori_icon/bandana.png'),
+      'Battaniye': require('../../assets/kategori_icon/battaniye.png'),
+      'Kamp Ürünleri': require('../../assets/kategori_icon/camp ürünleri.png'),
+      'Polar Bere': require('../../assets/kategori_icon/polar bere.png'),
+      'Rüzgarlık': require('../../assets/kategori_icon/rüzgarlık.png'),
+      'Şapka': require('../../assets/kategori_icon/şapka.png'),
+      'Hoodie': require('../../assets/kategori_icon/hoodie_4696583.png'),
+      'Mutfak Ürünleri': require('../../assets/kategori_icon/mutfsk ürünleri.png'),
+      'Silah Aksesuar': require('../../assets/kategori_icon/silah aksuar.png'),
+      'Silah Aksesuarları': require('../../assets/kategori_icon/silah aksuar.png'),
+      'Tişört': require('../../assets/kategori_icon/tişört.png'),
+      'T-Shirt': require('../../assets/kategori_icon/tişört.png'),
+      'Sweatshirt': require('../../assets/kategori_icon/hoodie_4696583.png'),
+      'Yelek': require('../../assets/kategori_icon/waistcoat_6229344.png'),
+      'Yardımcı Giyim Ürünleri': require('../../assets/kategori_icon/aplike.png'),
+      'Yağmurluk': require('../../assets/kategori_icon/yağmurluk.png'),
+    };
+    return iconMap[category] || null;
+  };
 
   const renderProduct = useCallback(({ item, index }: { item: Product; index: number }) => {
     if (viewMode === 'list') {
@@ -769,16 +769,16 @@ const styles = StyleSheet.create({
   },
   categoriesSection: {
     backgroundColor: Colors.background,
-    marginBottom: Spacing.xs,
+    marginBottom: 0,
   },
   categoriesGradient: {
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
   },
   categoriesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.xs,
+    marginBottom: 0,
   },
   categoriesTitle: {
     fontSize: 16,
@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
