@@ -604,7 +604,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       noPadding
     >
       <View style={styles.productImageContainer}>
-        <Image source={{ uri: item.image }} style={styles.productImage} />
+        <Image 
+          source={{ uri: item.image || 'https://via.placeholder.com/300x300?text=No+Image' }} 
+          style={styles.productImage} 
+        />
         {item.stock < 5 && item.stock > 0 && (
           <View style={styles.stockBadge}>
             <Text style={styles.stockBadgeText}>Son {item.stock} Ürün</Text>

@@ -259,7 +259,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ navigation }) => {
           {/* Product Image */}
           <View style={styles.productImageWrapper}>
             <Image 
-              source={{ uri: item.product?.image || 'https://via.placeholder.com/150' }} 
+              source={{ uri: item.product?.image || 'https://via.placeholder.com/150x150?text=No+Image' }} 
               style={styles.productImage}
               resizeMode="cover"
             />
