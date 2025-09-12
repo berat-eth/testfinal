@@ -893,57 +893,59 @@ app.put('/api/admin/return-requests/:id/status', authenticateAdmin, async (req, 
 // Admin Dashboard Stats
 app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   try {
-    // Veritabanı bağlantısı yoksa mock data döndür
-    if (!poolWrapper) {
-      return res.json({
-        success: true,
-        data: {
-          users: 150,
-          products: 500,
-          orders: 75,
-          tenants: 3,
-          monthlyRevenue: 25000,
-          monthlyOrders: 25
-        }
-      });
-    }
-
+    console.log('📊 Admin stats requested');
+    
+    // Kullanıcı sayısı
     const [userCount] = await poolWrapper.execute('SELECT COUNT(*) as count FROM users');
+    
+    // Ürün sayısı
     const [productCount] = await poolWrapper.execute('SELECT COUNT(*) as count FROM products');
+    
+    // Sipariş sayısı
     const [orderCount] = await poolWrapper.execute('SELECT COUNT(*) as count FROM orders');
+    
+    // Tenant sayısı
     const [tenantCount] = await poolWrapper.execute('SELECT COUNT(*) as count FROM tenants');
     
-    // Son 30 günün siparişleri
+    // Son 30 günün siparişleri ve geliri
     const [recentOrders] = await poolWrapper.execute(`
-      SELECT COUNT(*) as count, COALESCE(SUM(totalAmount), 0) as revenue 
+      SELECT 
+        COUNT(*) as count, 
+        COALESCE(SUM(totalAmount), 0) as revenue 
       FROM orders 
       WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        AND status != 'cancelled'
     `);
+    
+    // Bu ayın geliri
+    const [monthlyRevenue] = await poolWrapper.execute(`
+      SELECT COALESCE(SUM(totalAmount), 0) as revenue 
+      FROM orders 
+      WHERE DATE_FORMAT(createdAt, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+        AND status != 'cancelled'
+    `);
+    
+    const stats = {
+      users: userCount[0].count,
+      products: productCount[0].count,
+      orders: orderCount[0].count,
+      tenants: tenantCount[0].count,
+      monthlyRevenue: monthlyRevenue[0].revenue || 0,
+      monthlyOrders: recentOrders[0].count || 0
+    };
+    
+    console.log('📊 Stats calculated:', stats);
     
     res.json({
       success: true,
-      data: {
-        users: userCount[0].count,
-        products: productCount[0].count,
-        orders: orderCount[0].count,
-        tenants: tenantCount[0].count,
-        monthlyRevenue: recentOrders[0].revenue || 0,
-        monthlyOrders: recentOrders[0].count || 0
-      }
+      data: stats
     });
   } catch (error) {
     console.error('❌ Error getting admin stats:', error);
-    // Hata durumunda mock data döndür
-    res.json({
-      success: true,
-      data: {
-        users: 150,
-        products: 500,
-        orders: 75,
-        tenants: 3,
-        monthlyRevenue: 25000,
-        monthlyOrders: 25
-      }
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error getting stats',
+      error: error.message 
     });
   }
 });
@@ -951,34 +953,8 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
 // Admin Chart Data
 app.get('/api/admin/charts', authenticateAdmin, async (req, res) => {
   try {
-    // Veritabanı bağlantısı yoksa mock data döndür
-    if (!poolWrapper) {
-      return res.json({
-        success: true,
-        data: {
-          dailySales: [
-            { date: '2024-01-01', revenue: 1000 },
-            { date: '2024-01-02', revenue: 1500 },
-            { date: '2024-01-03', revenue: 1200 }
-          ],
-          orderStatuses: [
-            { status: 'pending', count: 10 },
-            { status: 'processing', count: 5 },
-            { status: 'shipped', count: 8 },
-            { status: 'delivered', count: 50 }
-          ],
-          monthlyRevenue: [
-            { month: '2024-01', revenue: 25000 },
-            { month: '2024-02', revenue: 30000 }
-          ],
-          topProducts: [
-            { name: 'Ürün 1', totalSold: 25 },
-            { name: 'Ürün 2', totalSold: 20 }
-          ]
-        }
-      });
-    }
-
+    console.log('📈 Admin charts requested');
+    
     // Son 7 günlük satışlar
     const [dailySales] = await poolWrapper.execute(`
       SELECT 
@@ -987,6 +963,7 @@ app.get('/api/admin/charts', authenticateAdmin, async (req, res) => {
         COALESCE(SUM(totalAmount), 0) as revenue
       FROM orders 
       WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        AND status != 'cancelled'
       GROUP BY DATE(createdAt)
       ORDER BY date ASC
     `);
@@ -998,6 +975,7 @@ app.get('/api/admin/charts', authenticateAdmin, async (req, res) => {
         COUNT(*) as count
       FROM orders
       GROUP BY status
+      ORDER BY count DESC
     `);
     
     // Son 6 aylık gelir
@@ -1007,6 +985,7 @@ app.get('/api/admin/charts', authenticateAdmin, async (req, res) => {
         COALESCE(SUM(totalAmount), 0) as revenue
       FROM orders 
       WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+        AND status != 'cancelled'
       GROUP BY DATE_FORMAT(createdAt, '%Y-%m')
       ORDER BY month ASC
     `);
@@ -1015,49 +994,42 @@ app.get('/api/admin/charts', authenticateAdmin, async (req, res) => {
     const [topProducts] = await poolWrapper.execute(`
       SELECT 
         p.name,
-        SUM(oi.quantity) as totalSold
+        SUM(oi.quantity) as totalSold,
+        p.price,
+        SUM(oi.quantity * oi.price) as totalRevenue
       FROM order_items oi
       JOIN products p ON oi.productId = p.id
-      GROUP BY p.id, p.name
+      JOIN orders o ON oi.orderId = o.id
+      WHERE o.status != 'cancelled'
+      GROUP BY p.id, p.name, p.price
       ORDER BY totalSold DESC
       LIMIT 5
     `);
     
+    const chartData = {
+      dailySales: dailySales || [],
+      orderStatuses: orderStatuses || [],
+      monthlyRevenue: monthlyRevenue || [],
+      topProducts: topProducts || []
+    };
+    
+    console.log('📈 Charts calculated:', {
+      dailySalesCount: chartData.dailySales.length,
+      orderStatusesCount: chartData.orderStatuses.length,
+      monthlyRevenueCount: chartData.monthlyRevenue.length,
+      topProductsCount: chartData.topProducts.length
+    });
+    
     res.json({
       success: true,
-      data: {
-        dailySales,
-        orderStatuses,
-        monthlyRevenue,
-        topProducts
-      }
+      data: chartData
     });
   } catch (error) {
     console.error('❌ Error getting chart data:', error);
-    // Hata durumunda mock data döndür
-    res.json({
-      success: true,
-      data: {
-        dailySales: [
-          { date: '2024-01-01', revenue: 1000 },
-          { date: '2024-01-02', revenue: 1500 },
-          { date: '2024-01-03', revenue: 1200 }
-        ],
-        orderStatuses: [
-          { status: 'pending', count: 10 },
-          { status: 'processing', count: 5 },
-          { status: 'shipped', count: 8 },
-          { status: 'delivered', count: 50 }
-        ],
-        monthlyRevenue: [
-          { month: '2024-01', revenue: 25000 },
-          { month: '2024-02', revenue: 30000 }
-        ],
-        topProducts: [
-          { name: 'Ürün 1', totalSold: 25 },
-          { name: 'Ürün 2', totalSold: 20 }
-        ]
-      }
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error getting chart data',
+      error: error.message 
     });
   }
 });
