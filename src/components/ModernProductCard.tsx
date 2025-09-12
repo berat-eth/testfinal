@@ -124,10 +124,14 @@ export const ModernProductCard: React.FC<ModernProductCardProps> = ({
                   onPress={onAddToCart}
                   disabled={product.stock === 0}
                 >
-                  <Icon 
-                    name="add-shopping-cart" 
-                    size={18} 
-                    color={product.stock === 0 ? Colors.textMuted : Colors.primary} 
+                  <Image
+                    source={require('../../assets/cart-add-icon.png')}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      tintColor: product.stock === 0 ? Colors.textMuted : Colors.primary
+                    }}
+                    resizeMode="contain"
                   />
                   <Text style={[
                     styles.addToCartText,
@@ -232,12 +236,15 @@ export const ModernProductCard: React.FC<ModernProductCardProps> = ({
               ]}
               onPress={onAddToCart}
               disabled={product.stock === 0}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Icon
-                name="add-shopping-cart"
-                size={20}
-                color={product.stock === 0 ? Colors.textMuted : Colors.primary}
+              <Image
+                source={require('../../assets/cart-add-icon.png')}
+                style={{
+                  width: 24,
+                  height: 24,
+                  tintColor: product.stock === 0 ? Colors.textMuted : Colors.primary
+                }}
+                resizeMode="contain"
               />
             </TouchableOpacity>
           )}
@@ -361,19 +368,15 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   addToCartButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.small,
   },
   addToCartButtonDisabled: {
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
+    backgroundColor: 'transparent',
   },
 
   // Horizontal card styles
@@ -414,11 +417,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    backgroundColor: Colors.surface,
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
+    backgroundColor: 'transparent',
     borderRadius: 20,
-    ...Shadows.small,
   },
   addToCartText: {
     fontSize: 12,

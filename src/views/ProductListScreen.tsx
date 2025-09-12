@@ -162,14 +162,32 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
   const getFlashDealProducts = (): Product[] => {
     const flashCamps = (campaigns || []).filter(isFlashCampaign);
     const productIds = new Set<number>();
+    
+    // Kampanyalardaki ürünleri ekle
     for (const c of flashCamps) {
       if (Array.isArray(c.applicableProducts) && c.applicableProducts.length > 0) {
         c.applicableProducts.forEach(id => productIds.add(Number(id)));
       }
     }
-    if (productIds.size === 0) return [];
+    
+    // Polar hırka ürünlerini ekle (flash indirim için)
+    const polarProducts = products.filter(product => 
+      product.category === 'Polar Bere' || 
+      product.name.toLowerCase().includes('polar') ||
+      product.name.toLowerCase().includes('hırka')
+    );
+    
+    // Kampanya ürünleri + polar ürünleri birleştir
     const pool = selectedCategory ? products : (filteredProducts.length ? filteredProducts : products);
-    return pool.filter(p => productIds.has(p.id));
+    const campaignProducts = pool.filter(p => productIds.has(p.id));
+    const allFlashProducts = [...campaignProducts, ...polarProducts];
+    
+    // Duplikatları kaldır
+    const uniqueProducts = allFlashProducts.filter((product, index, self) => 
+      index === self.findIndex(p => p.id === product.id)
+    );
+    
+    return uniqueProducts;
   };
 
   const formatHMS = (totalSeconds: number) => {

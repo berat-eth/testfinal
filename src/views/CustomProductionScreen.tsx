@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -50,6 +50,11 @@ interface SelectedProduct {
       width: number; // cm
       height: number; // cm
     };
+    // Benden özellikleri
+    isBenden?: boolean;
+    bendenSize?: string;
+    bendenQuantity?: number;
+    bendenDescription?: string;
   };
 }
 
@@ -72,6 +77,105 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
   const [logoScale, setLogoScale] = useState<number>(1);
   const [logoWidth, setLogoWidth] = useState<number>(5); // cm
   const [logoHeight, setLogoHeight] = useState<number>(5); // cm
+  
+  // Benden form state'leri
+  const [showBendenForm, setShowBendenForm] = useState(false);
+  const [bendenForm, setBendenForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    size: 'M',
+    quantity: 1,
+    description: '',
+    specialRequests: '',
+    budget: '',
+    deadline: '',
+    preferredContact: 'email'
+  });
+
+  // Load products on component mount
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        console.log('🔄 Starting product loading...');
+        
+        // Minimum loading time to show loading indicator
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Try multiple methods to get products
+        let productsArray: Product[] = [];
+        
+        try {
+          console.log('🔄 Method 1: getAllProducts...');
+          // Method 1: getAllProducts
+          const result = await ProductController.getAllProducts(1, 1000);
+          
+          if (Array.isArray(result)) {
+            productsArray = result;
+            console.log('✅ Method 1 success:', productsArray.length, 'products');
+          } else if (result && typeof result === 'object' && Array.isArray(result.products)) {
+            productsArray = result.products;
+            console.log('✅ Method 1 success (nested):', productsArray.length, 'products');
+          }
+        } catch (error) {
+          console.log('❌ Method 1 failed, trying method 2...');
+        }
+        
+        // Method 2: If no products, try getProductsByCategory with 'all'
+        if (productsArray.length === 0) {
+          try {
+            console.log('🔄 Method 2: getProductsByCategory("all")...');
+            const alternativeResult = await ProductController.getProductsByCategory('all');
+            if (Array.isArray(alternativeResult)) {
+              productsArray = alternativeResult;
+              console.log('✅ Method 2 success:', productsArray.length, 'products');
+            }
+          } catch (error) {
+            console.log('❌ Method 2 failed, trying method 3...');
+          }
+        }
+        
+        // Method 3: If still no products, try with specific categories
+        if (productsArray.length === 0) {
+          try {
+            console.log('🔄 Method 3: Loading specific categories...');
+            const categories = ['Tişört', 'T-Shirt', 'Hoodie', 'Sweatshirt', 'Kamp Ürünleri'];
+            for (const category of categories) {
+              const categoryProducts = await ProductController.getProductsByCategory(category);
+              if (Array.isArray(categoryProducts)) {
+                productsArray = [...productsArray, ...categoryProducts];
+              }
+            }
+            console.log('✅ Method 3 success:', productsArray.length, 'products');
+          } catch (error) {
+            console.log('❌ Method 3 failed');
+          }
+        }
+        
+        // Wait for minimum loading time
+        await minLoadingTime;
+        
+        setProducts(productsArray);
+        
+        // Extract unique categories
+        const uniqueCategories = [...new Set(productsArray.map(p => p.category))];
+        setCategories(uniqueCategories);
+        
+        console.log('✅ Product loading completed:', productsArray.length, 'products,', uniqueCategories.length, 'categories');
+      } catch (error) {
+        console.error('❌ Error loading products:', error);
+        Alert.alert('Hata', 'Ürünler yüklenirken bir hata oluştu');
+        setProducts([]); // Fallback to empty array
+      } finally {
+        setLoading(false);
+        console.log('🏁 Loading state set to false');
+      }
+    };
+
+    loadProducts();
+  }, []);
 
   useEffect(() => {
     if (currentCustomization?.customizations.logo && currentCustomization.customizations.logoTransform) {
@@ -118,7 +222,7 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
       
       setProducts(allProducts || []);
       
-      // Sadece giyim kategorilerini filtrele
+      // Sadece tekstil/giyim kategorilerini filtrele
       const clothingCategories = [
         'Mont', 'Pantolon', 'Gömlek', 'Hırka', 'Eşofmanlar', 'Bandana', 
         'Polar Bere', 'Rüzgarlık', 'Şapka', 'Hoodie', 'Tişört', 'T-Shirt', 
@@ -135,30 +239,49 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
     }
   };
 
-  // Giyim kategorileri
+  // Sadece tekstil/giyim kategorileri
   const clothingCategories = [
     'Mont', 'Pantolon', 'Gömlek', 'Hırka', 'Eşofmanlar', 'Bandana', 
     'Polar Bere', 'Rüzgarlık', 'Şapka', 'Hoodie', 'Tişört', 'T-Shirt', 
     'Sweatshirt', 'Yelek', 'Yardımcı Giyim Ürünleri', 'Yağmurluk'
   ];
 
-  const filteredProducts = products.filter(product => {
-    const isClothing = clothingCategories.includes(product.category);
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || product.category === selectedCategory;
-    return isClothing && matchesSearch && matchesCategory;
-  });
+  const filteredProducts = useMemo(() => {
+    if (!Array.isArray(products)) {
+      console.log('Products is not an array:', products);
+      return [];
+    }
+    
+    console.log('Total products:', products.length);
+    console.log('Search query:', searchQuery);
+    console.log('Selected category:', selectedCategory);
+    console.log('Clothing categories:', clothingCategories);
+    
+    const filtered = products.filter(product => {
+      const isClothing = clothingCategories.includes(product.category);
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = !selectedCategory || product.category === selectedCategory;
+      
+      if (!isClothing) {
+        console.log(`Product ${product.name} (${product.category}) filtered out - not clothing`);
+      }
+      
+      return isClothing && matchesSearch && matchesCategory;
+    });
+    
+    console.log('Filtered products:', filtered.length);
+    return filtered;
+  }, [products, searchQuery, selectedCategory]);
 
   const handleProductSelect = (product: Product) => {
-    setCurrentProduct(product);
-    setQuantity(1);
-    setShowProductModal(true);
+    // Direkt olarak customization modal'ına git
+    handleAddToCustomization(product, 1);
   };
 
   const handleAddToCustomization = (product: Product, quantity: number) => {
     const newCustomization: SelectedProduct = {
       product,
-      quantity,
+      quantity: 1, // Başlangıç adeti, beden formundan güncellenecek
       customizations: {
         text: '',
         logo: null,
@@ -168,6 +291,11 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
           width: 5, // cm
           height: 5, // cm
         },
+        // Benden özellikleri
+        isBenden: false,
+        bendenSize: 'M',
+        bendenQuantity: 1, // Adet buradan alınacak
+        bendenDescription: '',
       },
     };
     setCurrentCustomization(newCustomization);
@@ -177,7 +305,13 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
 
   const handleSaveCustomization = () => {
     if (currentCustomization) {
-      setSelectedProducts(prev => [...prev, currentCustomization]);
+      // Adet bilgisini beden formundan al
+      const updatedCustomization = {
+        ...currentCustomization,
+        quantity: currentCustomization.customizations.bendenQuantity || 1
+      };
+      
+      setSelectedProducts(prev => [...prev, updatedCustomization]);
       setCustomizationModal(false);
       setCurrentCustomization(null);
     }
@@ -301,6 +435,53 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
     } catch (error) {
       console.error('Error submitting custom production request:', error);
       Alert.alert('Hata', 'Talebiniz gönderilemedi. Lütfen tekrar deneyin.', [{ text: 'Tamam' }]);
+    }
+  };
+
+  const handleBendenFormSubmit = async () => {
+    if (!bendenForm.name || !bendenForm.email || !bendenForm.phone) {
+      Alert.alert('Uyarı', 'Lütfen ad, e-posta ve telefon alanlarını doldurun.');
+      return;
+    }
+
+    try {
+      const requestData: CreateCustomProductionRequestData = {
+        userId: 1, // Will be replaced with actual user context
+        items: [], // Benden formu için ürün seçimi yok
+        notes: `Benden Formu - ${bendenForm.description}`,
+        bendenForm: {
+          ...bendenForm,
+          submittedAt: new Date().toISOString()
+        }
+      };
+
+      const result = await CustomProductionController.createCustomProductionRequest(requestData);
+      
+      if (result.success) {
+        Alert.alert('Başarılı', 'Benden talebiniz başarıyla gönderildi!', [
+          { text: 'Tamam', onPress: () => {
+            setShowBendenForm(false);
+            setBendenForm({
+              name: '',
+              email: '',
+              phone: '',
+              company: '',
+              size: 'M',
+              quantity: 1,
+              description: '',
+              specialRequests: '',
+              budget: '',
+              deadline: '',
+              preferredContact: 'email'
+            });
+          }}
+        ]);
+      } else {
+        Alert.alert('Hata', result.message || 'Talep gönderilirken bir hata oluştu');
+      }
+    } catch (error) {
+      console.error('Error submitting benden form:', error);
+      Alert.alert('Hata', 'Talep gönderilirken bir hata oluştu');
     }
   };
 
@@ -594,6 +775,218 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
     </Modal>
   );
 
+  const renderBendenForm = () => (
+    <Modal
+      visible={showBendenForm}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowBendenForm(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.bendenFormModal}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Benden Formu</Text>
+            <TouchableOpacity onPress={() => setShowBendenForm(false)}>
+              <Icon name="close" size={24} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.bendenFormContent} showsVerticalScrollIndicator={false}>
+            {/* Kişisel Bilgiler */}
+            <View style={styles.formSection}>
+              <Text style={styles.sectionTitle}>Kişisel Bilgiler</Text>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Ad Soyad *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={bendenForm.name}
+                  onChangeText={(text) => setBendenForm(prev => ({ ...prev, name: text }))}
+                  placeholder="Adınızı ve soyadınızı girin"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>E-posta *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={bendenForm.email}
+                  onChangeText={(text) => setBendenForm(prev => ({ ...prev, email: text }))}
+                  placeholder="ornek@email.com"
+                  keyboardType="email-address"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Telefon *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={bendenForm.phone}
+                  onChangeText={(text) => setBendenForm(prev => ({ ...prev, phone: text }))}
+                  placeholder="0555 123 45 67"
+                  keyboardType="phone-pad"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Şirket</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={bendenForm.company}
+                  onChangeText={(text) => setBendenForm(prev => ({ ...prev, company: text }))}
+                  placeholder="Şirket adı (opsiyonel)"
+                />
+              </View>
+            </View>
+
+            {/* Ürün Bilgileri */}
+            <View style={styles.formSection}>
+              <Text style={styles.sectionTitle}>Ürün Bilgileri</Text>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Beden</Text>
+                <View style={styles.sizeSelector}>
+                  {['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'].map(size => (
+                    <TouchableOpacity
+                      key={size}
+                      style={[
+                        styles.sizeOption,
+                        bendenForm.size === size && styles.sizeOptionSelected
+                      ]}
+                      onPress={() => setBendenForm(prev => ({ ...prev, size }))}
+                    >
+                      <Text style={[
+                        styles.sizeOptionText,
+                        bendenForm.size === size && styles.sizeOptionTextSelected
+                      ]}>
+                        {size}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Adet</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={bendenForm.quantity.toString()}
+                  onChangeText={(text) => setBendenForm(prev => ({ ...prev, quantity: parseInt(text) || 1 }))}
+                  placeholder="1"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            {/* Proje Detayları */}
+            <View style={styles.formSection}>
+              <Text style={styles.sectionTitle}>Proje Detayları</Text>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Ürün Açıklaması *</Text>
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  value={bendenForm.description}
+                  onChangeText={(text) => setBendenForm(prev => ({ ...prev, description: text }))}
+                  placeholder="İstediğiniz ürünü detaylı olarak açıklayın..."
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Özel İstekler</Text>
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  value={bendenForm.specialRequests}
+                  onChangeText={(text) => setBendenForm(prev => ({ ...prev, specialRequests: text }))}
+                  placeholder="Özel isteklerinizi yazın..."
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Bütçe</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={bendenForm.budget}
+                  onChangeText={(text) => setBendenForm(prev => ({ ...prev, budget: text }))}
+                  placeholder="Bütçe aralığınız (opsiyonel)"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Teslim Tarihi</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={bendenForm.deadline}
+                  onChangeText={(text) => setBendenForm(prev => ({ ...prev, deadline: text }))}
+                  placeholder="İstediğiniz teslim tarihi (opsiyonel)"
+                />
+              </View>
+            </View>
+
+            {/* İletişim Tercihi */}
+            <View style={styles.formSection}>
+              <Text style={styles.sectionTitle}>İletişim Tercihi</Text>
+              
+              <View style={styles.contactOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.contactOption,
+                    bendenForm.preferredContact === 'email' && styles.contactOptionSelected
+                  ]}
+                  onPress={() => setBendenForm(prev => ({ ...prev, preferredContact: 'email' }))}
+                >
+                  <Icon 
+                    name="email" 
+                    size={20} 
+                    color={bendenForm.preferredContact === 'email' ? Colors.primary : Colors.textMuted} 
+                  />
+                  <Text style={[
+                    styles.contactOptionText,
+                    bendenForm.preferredContact === 'email' && styles.contactOptionTextSelected
+                  ]}>
+                    E-posta
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[
+                    styles.contactOption,
+                    bendenForm.preferredContact === 'phone' && styles.contactOptionSelected
+                  ]}
+                  onPress={() => setBendenForm(prev => ({ ...prev, preferredContact: 'phone' }))}
+                >
+                  <Icon 
+                    name="phone" 
+                    size={20} 
+                    color={bendenForm.preferredContact === 'phone' ? Colors.primary : Colors.textMuted} 
+                  />
+                  <Text style={[
+                    styles.contactOptionText,
+                    bendenForm.preferredContact === 'phone' && styles.contactOptionTextSelected
+                  ]}>
+                    Telefon
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+          
+          <View style={styles.modalFooter}>
+            <ModernButton
+              title="Formu Gönder"
+              onPress={handleBendenFormSubmit}
+              style={styles.submitButton}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   const renderCustomizationModal = () => (
     <Modal
       visible={customizationModal}
@@ -713,6 +1106,77 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
               </View>
             </View>
 
+            {/* Beden ve Adet - Her zaman görünür */}
+            <View style={styles.customizationSection}>
+              <Text style={styles.sectionTitle}>Beden ve Adet</Text>
+              
+              <View style={styles.bendenForm}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Beden</Text>
+                  <View style={styles.sizeSelector}>
+                    {['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'].map(size => (
+                      <TouchableOpacity
+                        key={size}
+                        style={[
+                          styles.sizeOption,
+                          currentCustomization?.customizations.bendenSize === size && styles.sizeOptionSelected
+                        ]}
+                        onPress={() => setCurrentCustomization(prev => 
+                          prev ? {
+                            ...prev,
+                            customizations: { ...prev.customizations, bendenSize: size }
+                          } : null
+                        )}
+                      >
+                        <Text style={[
+                          styles.sizeOptionText,
+                          currentCustomization?.customizations.bendenSize === size && styles.sizeOptionTextSelected
+                        ]}>
+                          {size}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Adet *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={currentCustomization?.customizations.bendenQuantity?.toString() || ''}
+                    onChangeText={(text) => setCurrentCustomization(prev => 
+                      prev ? {
+                        ...prev,
+                        customizations: { 
+                          ...prev.customizations, 
+                          bendenQuantity: parseInt(text) || 1 
+                        }
+                      } : null
+                    )}
+                    placeholder="Kaç adet istiyorsunuz?"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Özel Açıklama</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.textArea]}
+                    value={currentCustomization?.customizations.bendenDescription || ''}
+                    onChangeText={(text) => setCurrentCustomization(prev => 
+                      prev ? {
+                        ...prev,
+                        customizations: { ...prev.customizations, bendenDescription: text }
+                      } : null
+                    )}
+                    placeholder="Özel beden talebinizi detaylı olarak açıklayın..."
+                    multiline
+                    numberOfLines={3}
+                  />
+                </View>
+              </View>
+            </View>
+
             {currentCustomization?.customizations.logo && (
               <View style={styles.customizationSection}>
                 <Text style={styles.sectionTitle}>Logo Konumlandırma</Text>
@@ -769,6 +1233,28 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
       </View>
     </Modal>
   );
+
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Özel Üretim Talebi</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <View style={styles.loadingSpinner}>
+            <Icon name="refresh" size={48} color={Colors.primary} />
+          </View>
+          <Text style={styles.loadingText}>Ürünler yükleniyor...</Text>
+          <Text style={styles.loadingSubText}>Lütfen bekleyin</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -841,6 +1327,7 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
             contentContainerStyle={styles.productsGrid}
           />
         </View>
+
       </ScrollView>
 
       {/* Alt Buton */}
@@ -866,6 +1353,7 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
       {renderQuantityModal()}
       {renderCustomizationModal()}
       {renderLogoEditorModal()}
+      {renderBendenForm()}
     </SafeAreaView>
   );
 };
@@ -1386,6 +1874,233 @@ const styles = StyleSheet.create({
   infoModalBody: {
     maxHeight: 400,
     padding: Spacing.lg,
+  },
+  
+  // Benden Form Styles
+  bendenSection: {
+    margin: Spacing.lg,
+    padding: Spacing.lg,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    ...Shadows.small,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: Colors.textMuted,
+    marginBottom: Spacing.md,
+  },
+  bendenButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    borderStyle: 'dashed',
+  },
+  bendenButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginLeft: Spacing.sm,
+    flex: 1,
+  },
+  bendenButtonSubtext: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginLeft: Spacing.sm,
+  },
+  bendenFormModal: {
+    backgroundColor: Colors.surface,
+    margin: Spacing.lg,
+    borderRadius: 16,
+    maxHeight: '90%',
+    ...Shadows.large,
+  },
+  bendenFormContent: {
+    maxHeight: 500,
+    padding: Spacing.lg,
+  },
+  formSection: {
+    marginBottom: Spacing.xl,
+  },
+  inputGroup: {
+    marginBottom: Spacing.md,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: Spacing.xs,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    padding: Spacing.md,
+    fontSize: 16,
+    color: Colors.text,
+    backgroundColor: Colors.background,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  sizeSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  sizeOption: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  sizeOptionSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  sizeOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text,
+  },
+  sizeOptionTextSelected: {
+    color: Colors.textOnPrimary,
+  },
+  contactOptions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  contactOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.md,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  contactOptionSelected: {
+    backgroundColor: Colors.primary + '20',
+    borderColor: Colors.primary,
+  },
+  contactOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text,
+    marginLeft: Spacing.xs,
+  },
+  contactOptionTextSelected: {
+    color: Colors.primary,
+  },
+  
+  // Benden Form Styles (Customization Modal içinde)
+  bendenOptions: {
+    marginBottom: Spacing.md,
+  },
+  bendenOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  bendenOptionSelected: {
+    backgroundColor: Colors.primary + '20',
+    borderColor: Colors.primary,
+  },
+  bendenOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.text,
+    marginLeft: Spacing.sm,
+  },
+  bendenOptionTextSelected: {
+    color: Colors.primary,
+  },
+  bendenForm: {
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  inputGroup: {
+    marginBottom: Spacing.md,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+  },
+  sizeSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  sizeOption: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  sizeOptionSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  sizeOptionText: {
+    fontSize: 14,
+    color: Colors.text,
+  },
+  sizeOptionTextSelected: {
+    color: Colors.surface,
+    fontWeight: '600',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+    backgroundColor: Colors.background,
+  },
+  loadingSpinner: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+    ...Shadows.medium,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+  },
+  loadingSubText: {
+    fontSize: 14,
+    color: Colors.textMuted,
   },
   infoSection: {
     gap: Spacing.lg,

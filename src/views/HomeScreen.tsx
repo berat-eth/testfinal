@@ -44,6 +44,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const [popularProducts, setPopularProducts] = useState<Product[]>([]);
   const [newProducts, setNewProducts] = useState<Product[]>([]);
+  const [polarProducts, setPolarProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -189,11 +190,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           6
         );
 
+        // Polar hırka ürünlerini yükle
+        const polarProducts = allProducts
+          .filter(product => 
+            product.category === 'Polar Bere' || 
+            product.name.toLowerCase().includes('polar') ||
+            product.name.toLowerCase().includes('hırka')
+          )
+          .slice(0, 6);
+
         setPopularProducts(popularProducts);
         setNewProducts(newProducts);
+        setPolarProducts(polarProducts);
       } else {
         setPopularProducts([]);
         setNewProducts([]);
+        setPolarProducts([]);
       }
       
       setCategories(Array.isArray(cats) ? cats : []);
@@ -484,6 +496,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return colors[type] || '#007bff';
   };
 
+  const getOfferGradient = (type: string): string[] => {
+    const gradients: Record<string, string[]> = {
+      discount: ['#28a745', '#20c997'],
+      free_shipping: ['#17a2b8', '#6f42c1'],
+      bundle: ['#6f42c1', '#e83e8c'],
+      loyalty: ['#fd7e14', '#ff6b6b'],
+      seasonal: ['#20c997', '#28a745'],
+      birthday: ['#e83e8c', '#fd7e14'],
+    };
+    return gradients[type] || ['#007bff', '#6f42c1'];
+  };
+
   const getOfferIcon = (type: string): string => {
     const icons: Record<string, string> = {
       discount: 'local-offer',
@@ -760,7 +784,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const renderFlashDeals = () => {
     const now = nowTs;
     const flash = (campaigns || []).filter(c => c.isActive && c.status === 'active' && c.endDate);
-    if (flash.length === 0) return null;
+    
+    // Polar hırka ürünlerini flash indirimlere ekle (ilk 5 ürün)
+    const polarFlashProducts = polarProducts.slice(0, 5).map(product => ({
+      ...product,
+      flashDiscount: 10,
+      flashEndDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 saat sonra
+    }));
+
+    const allFlashItems = [...flash, ...polarFlashProducts];
+    
+    if (allFlashItems.length === 0) return null;
+    
     return (
       <View style={styles.sectionContainer}>
         <View style={styles.sectionHeader}>
@@ -772,32 +807,202 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.offerList}
+          contentContainerStyle={styles.productList}
         >
-          {flash.slice(0, 6).map(c => {
-            const end = new Date(c.endDate as string).getTime();
-            const remainSec = Math.max(0, Math.floor((end - now) / 1000));
-            return (
-              <View key={`flash-${c.id}`} style={[styles.offerCard, { backgroundColor: '#dc3545' }] }>
-                <View style={styles.offerHeader}>
-                  <View style={styles.offerIcon}>
-                    <Icon name="bolt" size={20} color="white" />
+          {allFlashItems.slice(0, 8).map((item, index) => {
+            const isPolarProduct = 'flashDiscount' in item;
+            
+            if (isPolarProduct) {
+              // Polar ürün kartı
+              return (
+                <ModernCard
+                  key={`flash-polar-${item.id}`}
+                  onPress={() => handleProductPress(item)}
+                  style={[styles.productCard, styles.flashProductCard] as any}
+                  noPadding
+                >
+                  <View style={styles.productImageContainer}>
+                    <Image 
+                      source={{ uri: item.image || 'https://via.placeholder.com/300x300?text=No+Image' }} 
+                      style={styles.productImage} 
+                    />
+                    <View style={styles.flashDiscountBadge}>
+                      <Text style={styles.flashDiscountText}>%{item.flashDiscount} İndirim</Text>
+                    </View>
+                    <View style={styles.flashTimerBadge}>
+                      <Icon name="timer" size={12} color="white" />
+                      <Text style={styles.flashTimerText}>24:00:00</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.favoriteButton}
+                      onPress={() => handleToggleFavorite(item)}
+                    >
+                      <Icon 
+                        name={favoriteProducts.includes(item.id) ? "favorite" : "favorite-border"} 
+                        size={20} 
+                        color={favoriteProducts.includes(item.id) ? Colors.secondary : Colors.text} 
+                      />
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.offerInfo}>
-                    <Text style={styles.offerTitle} numberOfLines={2}>{c.name}</Text>
-                    <Text style={styles.offerDescription} numberOfLines={2}>{c.description || 'Süre dolmadan yakalayın!'}</Text>
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productBrand}>{item.brand}</Text>
+                    <Text style={styles.productName} numberOfLines={2}>
+                      {item.name}
+                    </Text>
+                    <View style={styles.productFooter}>
+                      <View>
+                        <Text style={styles.flashOriginalPrice}>
+                          {ProductController.formatPrice(item.price)}
+                        </Text>
+                        <Text style={styles.flashDiscountedPrice}>
+                          {ProductController.formatPrice(item.price * 0.9)}
+                        </Text>
+                        {item.rating > 0 && (
+                          <View style={styles.ratingContainer}>
+                            <Icon name="star" size={14} color={Colors.warning} />
+                            <Text style={styles.ratingText}>
+                              {item.rating.toFixed(1)} ({item.reviewCount})
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.addToCartButton}
+                        onPress={() => handleAddToCart(item)}
+                      >
+                        <Icon name="add-shopping-cart" size={18} color={Colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </ModernCard>
+              );
+            } else {
+              // Kampanya kartı (eski stil)
+              const end = new Date(item.endDate as string).getTime();
+              const remainSec = Math.max(0, Math.floor((end - now) / 1000));
+              
+              return (
+                <View key={`flash-${item.id}`} style={[styles.offerCard, { backgroundColor: '#dc3545' }]}>
+                  <View style={styles.offerHeader}>
+                    <View style={styles.offerIcon}>
+                      <Icon name="bolt" size={20} color="white" />
+                    </View>
+                    <View style={styles.offerInfo}>
+                      <Text style={styles.offerTitle} numberOfLines={2}>{item.name}</Text>
+                      <Text style={styles.offerDescription} numberOfLines={2}>
+                        {item.description || 'Süre dolmadan yakalayın!'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.offerDiscount, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                    <Text style={styles.discountText}>Bitişe Kalan: {formatHMS(remainSec)}</Text>
                   </View>
                 </View>
-                <View style={[styles.offerDiscount, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
-                  <Text style={styles.discountText}>Bitişe Kalan: {formatHMS(remainSec)}</Text>
-                </View>
-              </View>
-            );
+              );
+            }
           })}
         </ScrollView>
       </View>
     );
   };
+
+  const renderDiscountOffers = () => (
+    <View style={styles.sectionContainer}>
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={styles.sectionTitle}>🔥 Özel İndirimler</Text>
+          <Text style={styles.sectionSubtitle}>Kaçırılmayacak fırsatlar</Text>
+        </View>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.offerList}
+      >
+        {/* Kış İndirimi */}
+        <TouchableOpacity
+          style={styles.modernOfferCard}
+          onPress={() => handleOfferPress({
+            id: 'winter-discount',
+            title: 'Kış İndirimi',
+            description: 'Tüm ürünlerde %10 indirim',
+            type: 'seasonal',
+            discountAmount: 10,
+            discountType: 'percentage'
+          })}
+        >
+          <LinearGradient
+            colors={['#20c997', '#28a745']}
+            style={styles.offerGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.offerGlow} />
+            <View style={styles.offerContent}>
+              <View style={styles.offerHeader}>
+                <View style={styles.modernOfferIcon}>
+                  <Icon name="ac-unit" size={24} color="white" />
+                </View>
+                <View style={styles.offerInfo}>
+                  <Text style={styles.modernOfferTitle} numberOfLines={2}>Kış İndirimi</Text>
+                  <Text style={styles.modernOfferDescription} numberOfLines={2}>Tüm ürünlerde %10 indirim</Text>
+                </View>
+              </View>
+              
+              <View style={styles.modernOfferDiscount}>
+                <Text style={styles.modernDiscountText}>%10 İndirim</Text>
+              </View>
+              
+              <View style={styles.offerBadge}>
+                <Text style={styles.badgeText}>Kış</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Yeni Kullanıcı İndirimi */}
+        <TouchableOpacity
+          style={styles.modernOfferCard}
+          onPress={() => handleOfferPress({
+            id: 'new-user-discount',
+            title: 'Yeni Kullanıcı İndirimi',
+            description: 'İlk alışverişinizde %15 indirim',
+            type: 'discount',
+            discountAmount: 15,
+            discountType: 'percentage'
+          })}
+        >
+          <LinearGradient
+            colors={['#e83e8c', '#fd7e14']}
+            style={styles.offerGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.offerGlow} />
+            <View style={styles.offerContent}>
+              <View style={styles.offerHeader}>
+                <View style={styles.modernOfferIcon}>
+                  <Icon name="person-add" size={24} color="white" />
+                </View>
+                <View style={styles.offerInfo}>
+                  <Text style={styles.modernOfferTitle} numberOfLines={2}>Yeni Kullanıcı</Text>
+                  <Text style={styles.modernOfferDescription} numberOfLines={2}>İlk alışverişinizde %15 indirim</Text>
+                </View>
+              </View>
+              
+              <View style={styles.modernOfferDiscount}>
+                <Text style={styles.modernDiscountText}>%15 İndirim</Text>
+              </View>
+              
+              <View style={styles.offerBadge}>
+                <Text style={styles.badgeText}>YENİ</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
 
   const renderPersonalizedOffers = () => {
     if (!personalizedContent || personalizedContent.personalizedOffers.length === 0) {
@@ -823,29 +1028,43 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           {personalizedContent.personalizedOffers.slice(0, 3).map((offer, index) => (
             <TouchableOpacity
               key={offer.id}
-              style={[styles.offerCard, { backgroundColor: getOfferColor(offer.type) }]}
+              style={styles.modernOfferCard}
               onPress={() => handleOfferPress(offer)}
             >
-              <View style={styles.offerHeader}>
-                <View style={styles.offerIcon}>
-                  <Icon name={getOfferIcon(offer.type)} size={20} color="white" />
+              <LinearGradient
+                colors={getOfferGradient(offer.type)}
+                style={styles.offerGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.offerGlow} />
+                <View style={styles.offerContent}>
+                  <View style={styles.offerHeader}>
+                    <View style={styles.modernOfferIcon}>
+                      <Icon name={getOfferIcon(offer.type)} size={24} color="white" />
+                    </View>
+                    <View style={styles.offerInfo}>
+                      <Text style={styles.modernOfferTitle} numberOfLines={2}>{offer.title}</Text>
+                      <Text style={styles.modernOfferDescription} numberOfLines={2}>{offer.description}</Text>
+                    </View>
+                  </View>
+                  
+                  {offer.discountAmount && (
+                    <View style={styles.modernOfferDiscount}>
+                      <Text style={styles.modernDiscountText}>
+                        {offer.discountType === 'percentage' 
+                          ? `%${offer.discountAmount} İndirim`
+                          : `${offer.discountAmount} TL İndirim`
+                        }
+                      </Text>
+                    </View>
+                  )}
+                  
+                  <View style={styles.offerBadge}>
+                    <Text style={styles.badgeText}>ÖZEL</Text>
+                  </View>
                 </View>
-                <View style={styles.offerInfo}>
-                  <Text style={styles.offerTitle} numberOfLines={2}>{offer.title}</Text>
-                  <Text style={styles.offerDescription} numberOfLines={2}>{offer.description}</Text>
-                </View>
-              </View>
-              
-              {offer.discountAmount && (
-                <View style={styles.offerDiscount}>
-                  <Text style={styles.discountText}>
-                    {offer.discountType === 'percentage' 
-                      ? `%${offer.discountAmount} İndirim`
-                      : `${offer.discountAmount} TL İndirim`
-                    }
-                  </Text>
-                </View>
-              )}
+              </LinearGradient>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -906,6 +1125,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         {renderHeroSlider()}
         {renderCategories()}
         {renderFlashDeals()}
+        {renderDiscountOffers()}
         {renderCampaigns()}
         {renderPersonalizedOffers()}
         {renderRecommendedProducts()}
@@ -1192,6 +1412,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Shadows.small,
   },
+  // Flash indirim ürün kartı stilleri
+  flashProductCard: {
+    width: width * 0.45,
+    marginRight: Spacing.md,
+  },
+  flashDiscountBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#ff6b35',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: 12,
+  },
+  flashDiscountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'white',
+  },
+  flashTimerBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  flashTimerText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'white',
+    marginLeft: 4,
+  },
+  flashOriginalPrice: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    textDecorationLine: 'line-through',
+    marginBottom: 2,
+  },
+  flashDiscountedPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ff6b35',
+  },
   offerList: {
     paddingHorizontal: Spacing.lg,
   },
@@ -1201,6 +1468,31 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     borderRadius: 12,
     ...Shadows.medium,
+  },
+  modernOfferCard: {
+    width: width * 0.8,
+    marginRight: Spacing.md,
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...Shadows.large,
+  },
+  offerGradient: {
+    padding: Spacing.lg,
+    position: 'relative',
+  },
+  offerGlow: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    opacity: 0.6,
+  },
+  offerContent: {
+    position: 'relative',
+    zIndex: 1,
   },
   offerHeader: {
     flexDirection: 'row',
@@ -1215,6 +1507,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.sm,
+  },
+  modernOfferIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+    ...Shadows.small,
   },
   offerInfo: {
     flex: 1,
@@ -1240,6 +1542,52 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
     textAlign: 'center',
+  },
+  modernOfferTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  modernOfferDescription: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.95)',
+    lineHeight: 18,
+  },
+  modernOfferDiscount: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: 12,
+    marginTop: Spacing.md,
+    alignSelf: 'flex-start',
+  },
+  modernDiscountText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: 'white',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  offerBadge: {
+    position: 'absolute',
+    top: Spacing.md,
+    right: Spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#333',
+    letterSpacing: 0.5,
   },
 
 });
