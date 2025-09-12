@@ -1760,6 +1760,23 @@ app.get('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
   }
 });
 
+// Admin - Get all categories (for admin panel)
+app.get('/api/admin/categories', authenticateAdmin, async (req, res) => {
+  try {
+    console.log('📂 Admin requesting categories');
+    
+    const [rows] = await poolWrapper.execute(
+      'SELECT * FROM categories ORDER BY name ASC'
+    );
+    
+    console.log('📂 Categories found:', rows.length);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error getting categories:', error);
+    res.status(500).json({ success: false, message: 'Error getting categories' });
+  }
+});
+
 // ==================== FLASH DEALS API ====================
 
 // Create flash deals table if not exists

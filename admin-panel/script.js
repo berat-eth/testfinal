@@ -1802,19 +1802,28 @@ let products = [];
 // Load categories and products for flash deal target selection
 async function loadCategoriesAndProducts() {
     try {
+        console.log('📂 Loading categories and products for flash deal...');
+        
         // Load categories
         const categoriesData = await apiRequest('/admin/categories');
         if (categoriesData.success) {
             categories = categoriesData.data;
+            console.log('📂 Categories loaded:', categories.length);
+        } else {
+            console.error('Failed to load categories:', categoriesData.message);
         }
         
         // Load products
         const productsData = await apiRequest('/admin/products');
         if (productsData.success) {
             products = productsData.data;
+            console.log('📦 Products loaded:', products.length);
+        } else {
+            console.error('Failed to load products:', productsData.message);
         }
     } catch (error) {
         console.error('Error loading categories and products:', error);
+        showNotification('Kategori ve ürün bilgileri yüklenirken hata oluştu', 'error');
     }
 }
 
@@ -1837,45 +1846,81 @@ function updateTargetSelection() {
     const targetType = document.getElementById('flashDealTargetType').value;
     const targetSelect = document.getElementById('flashDealTargetId');
     
+    console.log('🎯 Updating target selection for type:', targetType);
+    console.log('📂 Available categories:', categories.length);
+    console.log('📦 Available products:', products.length);
+    
     // Clear existing options
     targetSelect.innerHTML = '<option value="">Seçiniz</option>';
     
     if (targetType === 'category') {
         targetSelect.disabled = false;
-        categories.forEach(category => {
+        if (categories.length === 0) {
             const option = document.createElement('option');
-            option.value = category.id;
-            option.textContent = category.name;
+            option.value = '';
+            option.textContent = 'Kategori bulunamadı';
+            option.disabled = true;
             targetSelect.appendChild(option);
-        });
+        } else {
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                targetSelect.appendChild(option);
+            });
+        }
     } else if (targetType === 'product') {
         targetSelect.disabled = false;
-        products.forEach(product => {
+        if (products.length === 0) {
             const option = document.createElement('option');
-            option.value = product.id;
-            option.textContent = product.name;
+            option.value = '';
+            option.textContent = 'Ürün bulunamadı';
+            option.disabled = true;
             targetSelect.appendChild(option);
-        });
+        } else {
+            products.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product.id;
+                option.textContent = product.name;
+                targetSelect.appendChild(option);
+            });
+        }
     } else {
         targetSelect.disabled = true;
     }
 }
 
 // Open flash deal modal
-function openCreateFlashDealModal() {
-    // Set default dates
-    const now = new Date();
-    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    
-    document.getElementById('flashDealStartDate').value = tomorrow.toISOString().slice(0, 16);
-    document.getElementById('flashDealEndDate').value = nextWeek.toISOString().slice(0, 16);
-    
-    // Load categories and products
-    loadCategoriesAndProducts();
-    
-    // Show modal
-    document.getElementById('createFlashDealModal').classList.remove('hidden');
+async function openCreateFlashDealModal() {
+    try {
+        // Set default dates
+        const now = new Date();
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        
+        document.getElementById('flashDealStartDate').value = tomorrow.toISOString().slice(0, 16);
+        document.getElementById('flashDealEndDate').value = nextWeek.toISOString().slice(0, 16);
+        
+        // Show modal first
+        document.getElementById('createFlashDealModal').classList.remove('hidden');
+        
+        // Show loading
+        showLoading(true);
+        
+        // Load categories and products
+        await loadCategoriesAndProducts();
+        
+        // Reset form
+        document.getElementById('createFlashDealForm').reset();
+        document.getElementById('flashDealTargetId').disabled = true;
+        document.getElementById('flashDealTargetId').innerHTML = '<option value="">Önce hedef türü seçin</option>';
+        
+    } catch (error) {
+        console.error('Error opening flash deal modal:', error);
+        showNotification('Flash indirim modal\'ı açılırken hata oluştu', 'error');
+    } finally {
+        showLoading(false);
+    }
 }
 
 // Show campaign tab
