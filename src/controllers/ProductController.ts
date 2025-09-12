@@ -24,8 +24,8 @@ export class ProductController {
 
       // Try API with pagination
       const response = await apiService.getProducts(page, limit);
-      if (response.success && Array.isArray(response.data)) {
-        const products = response.data.map((apiProduct: any) => this.mapApiProductToAppProduct(apiProduct));
+      if (response.success && response.data && Array.isArray(response.data.products)) {
+        const products = response.data.products.map((apiProduct: any) => this.mapApiProductToAppProduct(apiProduct));
         
         // Cache first page
         if (page === 1) {
@@ -34,8 +34,8 @@ export class ProductController {
         
         return {
           products,
-          total: response.total || products.length,
-          hasMore: response.hasMore || false
+          total: response.data.total || products.length,
+          hasMore: response.data.hasMore || false
         };
       }
       

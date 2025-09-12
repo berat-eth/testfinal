@@ -109,7 +109,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
       const [productsResult, allCategories] = await Promise.all([
         selectedCategory 
           ? ProductController.getProductsByCategory(selectedCategory)
-          : ProductController.getAllProducts(page, ITEMS_PER_PAGE),
+          : ProductController.getAllProducts(1, 1000), // Tüm ürünleri tek seferde yükle
         ProductController.getAllCategories(),
       ]);
       
@@ -121,18 +121,14 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
         setTotalProducts(allProducts.length);
         setHasMore(false);
       } else {
-        // For paginated products
-        const { products: newProducts, total, hasMore: hasMoreProducts } = productsResult as any;
-        const allProducts = Array.isArray(newProducts) ? newProducts : [];
+        // For all products - load everything at once
+        const { products: allProducts, total } = productsResult as any;
+        const productsArray = Array.isArray(allProducts) ? allProducts : [];
         
-        if (append) {
-          setProducts(prev => [...prev, ...allProducts]);
-        } else {
-          setProducts(allProducts);
-        }
-        setFilteredProducts(append ? [...products, ...allProducts] : allProducts);
-        setTotalProducts(total || 0);
-        setHasMore(hasMoreProducts || false);
+        setProducts(productsArray);
+        setFilteredProducts(productsArray);
+        setTotalProducts(total || productsArray.length);
+        setHasMore(false); // Tüm ürünler yüklendi, daha fazla yok
       }
       
       setCategories(Array.isArray(allCategories) ? allCategories : []);
@@ -163,11 +159,8 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
   };
 
   const loadMore = async () => {
-    if (!hasMore || loadingMore || selectedCategory) return;
-    
-    const nextPage = currentPageNum + 1;
-    setCurrentPageNum(nextPage);
-    await loadData(nextPage, true);
+    // Artık tüm ürünler tek seferde yükleniyor, loadMore gerekli değil
+    return;
   };
 
   const applyFiltersAndSort = useCallback(() => {
@@ -524,8 +517,13 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     <View style={styles.sortViewContainer}>
       <View style={styles.resultCount}>
         <Text style={styles.resultCountText}>
-          {filteredProducts.length} ürün bulundu
+          {filteredProducts.length} / {totalProducts} ürün
         </Text>
+        {totalProducts > 0 && (
+          <Text style={styles.totalCountText}>
+            Toplam {totalProducts} ürün mevcut
+          </Text>
+        )}
       </View>
       
       <View style={styles.sortViewButtons}>
@@ -642,10 +640,12 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
       );
     }
     
-    if (!hasMore && products.length > 0) {
+    if (products.length > 0) {
       return (
         <View style={styles.footerEnd}>
-          <Text style={styles.footerEndText}>Tüm ürünler yüklendi</Text>
+          <Text style={styles.footerEndText}>
+            Tüm {totalProducts} ürün yüklendi
+          </Text>
         </View>
       );
     }
@@ -698,8 +698,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
             }
             ListEmptyComponent={renderEmptyState}
             ListFooterComponent={renderFooter}
-            onEndReached={loadMore}
-            onEndReachedThreshold={0.5}
             removeClippedSubviews={true}
             maxToRenderPerBatch={10}
             updateCellsBatchingPeriod={50}
@@ -900,6 +898,12 @@ const styles = StyleSheet.create({
   resultCountText: {
     fontSize: 14,
     color: Colors.textLight,
+    fontWeight: '600',
+  },
+  totalCountText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   sortViewButtons: {
     flexDirection: 'row',
