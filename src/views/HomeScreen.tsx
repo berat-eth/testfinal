@@ -166,7 +166,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     try {
       setLoading(true);
       const [allProductsResponse, cats] = await Promise.all([
-        ProductController.getAllProducts(),
+        ProductController.getAllProducts(1, 1000), // Tüm ürünleri al (1000 limit)
         ProductController.getAllCategories(),
       ]);
 
@@ -240,7 +240,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const refreshPopularProducts = async () => {
     try {
-      const allProductsResponse = await ProductController.getAllProducts();
+      const allProductsResponse = await ProductController.getAllProducts(1, 1000); // Tüm ürünleri al
       const allProducts = allProductsResponse?.products || [];
       if (allProducts && allProducts.length > 0) {
         // Yeni ürünlerle çakışmayacak şekilde random ürünler seç
