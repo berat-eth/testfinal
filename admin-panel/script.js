@@ -213,6 +213,7 @@ function showSection(sectionName) {
         'users': 'Kullanıcı Yönetimi',
         'orders': 'Sipariş Yönetimi',
         'products': 'Ürün Yönetimi',
+        'product-detail': 'Ürün Detayları',
         'campaigns': 'Kampanya Yönetimi',
         'segments': 'Müşteri Segmentleri',
         'analytics': 'Analitik ve Raporlar',
@@ -1508,12 +1509,162 @@ function updateCampaignPerformanceTable(campaigns) {
     `).join('');
 }
 
-// Placeholder functions for future implementation
+// Product Detail Functions
+let currentProductId = null;
+
 function viewProduct(id) {
     console.log('View product:', id);
-    showNotification('Ürün detayları yakında eklenecek', 'info');
+    currentProductId = id;
+    showProductDetail(id);
 }
 
+function showProductDetail(productId) {
+    try {
+        showLoading(true);
+        
+        // Show product detail section
+        showSection('product-detail');
+        
+        // Load product details
+        loadProductDetail(productId);
+        
+    } catch (error) {
+        console.error('Error showing product detail:', error);
+        showNotification('Ürün detayları yüklenirken hata oluştu', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function loadProductDetail(productId) {
+    try {
+        console.log('📦 Loading product detail for ID:', productId);
+        
+        // Get product details
+        const productData = await apiRequest(`/admin/products/${productId}`);
+        
+        if (productData.success) {
+            displayProductDetail(productData.data);
+        } else {
+            throw new Error(productData.message || 'Ürün bulunamadı');
+        }
+        
+    } catch (error) {
+        console.error('Error loading product detail:', error);
+        showNotification('Ürün detayları yüklenirken hata oluştu: ' + error.message, 'error');
+    }
+}
+
+function displayProductDetail(product) {
+    console.log('📦 Displaying product detail:', product);
+    
+    // Update basic product info
+    document.getElementById('productDetailId').textContent = product.id;
+    document.getElementById('productDetailName').textContent = product.name || 'Ürün Adı';
+    document.getElementById('productDetailCategory').textContent = product.category || '-';
+    document.getElementById('productDetailBrand').textContent = product.brand || '-';
+    document.getElementById('productDetailPrice').textContent = formatCurrency(product.price) + ' ₺';
+    document.getElementById('productDetailStock').textContent = product.stock || '0';
+    document.getElementById('productDetailDescription').textContent = product.description || 'Açıklama bulunmuyor';
+    
+    // Update product image
+    const productImage = document.getElementById('productDetailImage');
+    if (product.image) {
+        productImage.src = product.image;
+    } else {
+        productImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMmY1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
+    }
+    
+    // Load additional data
+    loadProductVariations(product.id);
+    loadProductOrders(product.id);
+    loadProductAnalytics(product.id);
+}
+
+async function loadProductVariations(productId) {
+    try {
+        // This would typically come from an API endpoint
+        // For now, we'll show a placeholder
+        const variationsList = document.getElementById('productVariationsList');
+        variationsList.innerHTML = '<p class="no-data">Varyasyon verisi henüz mevcut değil</p>';
+    } catch (error) {
+        console.error('Error loading product variations:', error);
+    }
+}
+
+async function loadProductOrders(productId) {
+    try {
+        // This would typically come from an API endpoint
+        // For now, we'll show a placeholder
+        const ordersList = document.getElementById('productOrdersList');
+        ordersList.innerHTML = '<p class="no-data">Sipariş verisi henüz mevcut değil</p>';
+    } catch (error) {
+        console.error('Error loading product orders:', error);
+    }
+}
+
+async function loadProductAnalytics(productId) {
+    try {
+        // This would typically come from an API endpoint
+        // For now, we'll show placeholder data
+        document.getElementById('totalSales').textContent = '0';
+        document.getElementById('totalRevenue').textContent = '0 ₺';
+        document.getElementById('averageRating').textContent = 'N/A';
+        document.getElementById('viewCount').textContent = '0';
+    } catch (error) {
+        console.error('Error loading product analytics:', error);
+    }
+}
+
+function goBackToProducts() {
+    showSection('products');
+    currentProductId = null;
+}
+
+function editProductDetail() {
+    if (!currentProductId) {
+        showNotification('Ürün seçilmedi', 'error');
+        return;
+    }
+    
+    console.log('Edit product detail:', currentProductId);
+    showNotification('Ürün düzenleme özelliği yakında eklenecek', 'info');
+}
+
+function deleteProductDetail() {
+    if (!currentProductId) {
+        showNotification('Ürün seçilmedi', 'error');
+        return;
+    }
+    
+    if (confirm('Bu ürünü silmek istediğinizden emin misiniz?')) {
+        console.log('Delete product:', currentProductId);
+        showNotification('Ürün silme özelliği yakında eklenecek', 'info');
+    }
+}
+
+function showProductTab(tabName) {
+    // Hide all tab panels
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.remove('active');
+    });
+    
+    // Show selected tab panel
+    const selectedPanel = document.getElementById(tabName + '-tab');
+    if (selectedPanel) {
+        selectedPanel.classList.add('active');
+    }
+    
+    // Add active class to clicked button
+    event.target.classList.add('active');
+}
+
+// Placeholder functions for future implementation
 function editProduct(id) {
     console.log('Edit product:', id);
     showNotification('Ürün düzenleme yakında eklenecek', 'info');
@@ -1663,6 +1814,13 @@ window.openCreateCampaignModal = openCreateCampaignModal;
 window.openCreateSegmentModal = openCreateSegmentModal;
 window.closeModal = closeModal;
 window.createAutomaticSegments = createAutomaticSegments;
+window.viewProduct = viewProduct;
+window.editProduct = editProduct;
+window.showProductDetail = showProductDetail;
+window.goBackToProducts = goBackToProducts;
+window.editProductDetail = editProductDetail;
+window.deleteProductDetail = deleteProductDetail;
+window.showProductTab = showProductTab;
 window.createWeeklyFlashDeal = async function createWeeklyFlashDeal() {
     try {
         const name = prompt('Kampanya adı (ör: Haftalık Flash İndirim):', 'Haftalık Flash İndirim');
