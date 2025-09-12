@@ -59,6 +59,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [nowTs, setNowTs] = useState<number>(Date.now());
   const nowIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [showFlashDeals, setShowFlashDeals] = useState(false);
   
   // Pagination state
   const [currentPageNum, setCurrentPageNum] = useState(1);
@@ -145,6 +146,55 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
       console.error('Error loading campaigns:', e);
       setCampaigns([]);
     }
+  };
+
+  const isFlashCampaign = (c: Campaign) => {
+    if (!c.isActive || c.status !== 'active' || !c.endDate) return false;
+    const end = new Date(c.endDate).getTime();
+    const remainMs = end - nowTs;
+    return remainMs > 0 && remainMs <= 7 * 24 * 60 * 60 * 1000; // 1 hafta
+  };
+
+  const getFlashDealProducts = (): Product[] => {
+    const flashCamps = (campaigns || []).filter(isFlashCampaign);
+    const productIds = new Set<number>();
+    for (const c of flashCamps) {
+      if (Array.isArray(c.applicableProducts) && c.applicableProducts.length > 0) {
+        c.applicableProducts.forEach(id => productIds.add(Number(id)));
+      }
+    }
+    if (productIds.size === 0) return [];
+    const pool = selectedCategory ? products : (filteredProducts.length ? filteredProducts : products);
+    return pool.filter(p => productIds.has(p.id));
+  };
+
+  const formatHMS = (totalSeconds: number) => {
+    const sec = Math.max(0, totalSeconds);
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const renderFlashHeader = () => {
+    const ends = (campaigns || [])
+      .filter(isFlashCampaign)
+      .map(c => new Date(c.endDate as string).getTime())
+      .sort((a, b) => a - b);
+    const soonestEnd = ends[0];
+    const remainSec = soonestEnd ? Math.max(0, Math.floor((soonestEnd - nowTs) / 1000)) : 0;
+    return (
+      <View style={styles.flashHeader}>
+        <View style={styles.flashTitleWrap}>
+          <Icon name="flash-on" size={18} color={Colors.secondary} />
+          <Text style={styles.flashTitle}>Flash İndirimler</Text>
+        </View>
+        <View style={styles.flashTimer}>
+          <Icon name="timer" size={14} color={Colors.primary} />
+          <Text style={styles.flashTimerText}>Bitiş: {formatHMS(remainSec)}</Text>
+        </View>
+      </View>
+    );
   };
 
   const onRefresh = async () => {
@@ -343,10 +393,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesContainer}
-          onScrollBeginDrag={() => setPagerEnabled(false)}
-          onScrollEndDrag={() => setPagerEnabled(true)}
-          onTouchStart={() => setPagerEnabled(false)}
-          onTouchEnd={() => setPagerEnabled(true)}
         >
           <TouchableOpacity
             style={[
@@ -450,16 +496,26 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     <View style={styles.sortViewContainer}>
       <View style={styles.resultCount}>
         <Text style={styles.resultCountText}>
-          {filteredProducts.length} / {totalProducts} ürün
+          {showFlashDeals ? getFlashDealProducts().length : filteredProducts.length} / {totalProducts} ürün
         </Text>
         {totalProducts > 0 && (
           <Text style={styles.totalCountText}>
-            Toplam {totalProducts} ürün mevcut
+            {showFlashDeals ? 'Flash İndirimler' : `Toplam ${totalProducts} ürün mevcut`}
           </Text>
         )}
       </View>
       
       <View style={styles.sortViewButtons}>
+        <TouchableOpacity
+          style={[styles.toggleButton, showFlashDeals && styles.toggleButtonActive]}
+          onPress={() => setShowFlashDeals(!showFlashDeals)}
+        >
+          <Icon name="flash-on" size={16} color={showFlashDeals ? Colors.textOnPrimary : Colors.text} />
+          <Text style={[styles.toggleButtonText, showFlashDeals && styles.toggleButtonTextActive]}>
+            {showFlashDeals ? 'Tümü' : 'Flash'}
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.sortButton}
           onPress={() => {
@@ -597,15 +653,16 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
       {renderHeader()}
       {renderCategories()}
       {renderSortAndView()}
+      {showFlashDeals && renderFlashHeader()}
       <FlatList
-        data={filteredProducts}
+        data={showFlashDeals ? getFlashDealProducts() : filteredProducts}
         renderItem={renderProduct}
         keyExtractor={(item, index) => `${item.id}-${index}`}
         numColumns={viewMode === 'grid' ? 2 : 1}
         key={viewMode}
         contentContainerStyle={[
           styles.productList,
-          filteredProducts.length === 0 && styles.emptyList,
+          (showFlashDeals ? getFlashDealProducts() : filteredProducts).length === 0 && styles.emptyList,
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -616,7 +673,13 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
             tintColor={Colors.primary}
           />
         }
-        ListEmptyComponent={renderEmptyState}
+        ListEmptyComponent={showFlashDeals ? () => (
+          <View style={styles.emptyState}>
+            <Icon name="bolt" size={64} color={Colors.textMuted} />
+            <Text style={styles.emptyStateTitle}>Şu an flash indirim yok</Text>
+            <Text style={styles.emptyStateText}>Kısa süre sonra tekrar kontrol edin</Text>
+          </View>
+        ) : renderEmptyState}
         ListFooterComponent={renderFooter}
         removeClippedSubviews={true}
         maxToRenderPerBatch={20}
@@ -867,5 +930,64 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textMuted,
     fontStyle: 'italic',
+  },
+  toggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: Colors.background,
+    marginRight: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  toggleButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  toggleButtonText: {
+    fontSize: 13,
+    color: Colors.text,
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  toggleButtonTextActive: {
+    color: Colors.textOnPrimary,
+  },
+  flashHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  flashTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  flashTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+    marginLeft: 8,
+  },
+  flashTimer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  flashTimerText: {
+    marginLeft: 6,
+    color: Colors.primary,
+    fontWeight: '600',
   },
 });
