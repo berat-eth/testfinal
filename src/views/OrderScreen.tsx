@@ -7,9 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
   TextInput,
-  Alert,
-  StatusBar,
-  KeyboardAvoidingView,
+  Alert,KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -546,7 +544,7 @@ export const OrderScreen: React.FC<OrderScreenProps> = ({ navigation, route }) =
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1A1A2E" />
+      <StatusBar style="light" />
       <KeyboardAvoidingView 
         style={styles.container} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

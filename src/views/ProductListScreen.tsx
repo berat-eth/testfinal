@@ -9,11 +9,11 @@ import {
   ScrollView,
   Dimensions,
   RefreshControl,
-  StatusBar,
   TextInput,
   Alert,
   Image,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Gradients } from '../theme/colors';
@@ -27,6 +27,8 @@ import { UserController } from '../controllers/UserController';
 import { LoadingIndicator } from '../components/LoadingIndicator';
 import { FilterModal } from '../components/FilterModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SearchBar } from '../components/SearchBar';
+import { CampaignController, Campaign } from '../controllers/CampaignController';
 
 interface ProductListScreenProps {
   navigation: any;
@@ -53,13 +55,37 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     brands: [] as string[],
     inStock: false,
   });
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [nowTs, setNowTs] = useState<number>(Date.now());
+  const pagerRef = useRef<ScrollView>(null);
+  const [currentPage, setCurrentPage] = useState<number>(0);
+  const [pagerEnabled, setPagerEnabled] = useState<boolean>(true);
+  const nowIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     loadData();
     loadFavorites();
+    loadCampaigns();
+
+    if (!nowIntervalRef.current) {
+      nowIntervalRef.current = setInterval(() => setNowTs(Date.now()), 1000);
+    }
+
+    return () => {
+      if (nowIntervalRef.current) {
+        clearInterval(nowIntervalRef.current);
+        nowIntervalRef.current = null;
+      }
+    };
   }, [selectedCategory]);
+
+  useEffect(() => {
+    if (route.params?.searchQuery) {
+      setSearchQuery(route.params.searchQuery);
+    }
+  }, [route.params?.searchQuery]);
 
   useEffect(() => {
     applyFiltersAndSort();
@@ -85,6 +111,16 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     }
   };
 
+  const loadCampaigns = async () => {
+    try {
+      const all = await CampaignController.getCampaigns();
+      setCampaigns(Array.isArray(all) ? all : []);
+    } catch (e) {
+      console.error('Error loading campaigns:', e);
+      setCampaigns([]);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadData();
@@ -96,11 +132,16 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
 
     // Search filter
     if (searchQuery) {
-      filtered = filtered.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.brand?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((product) => {
+        const inName = product.name?.toLowerCase().includes(q);
+        const inBrand = product.brand?.toLowerCase().includes(q);
+        const inExternalId = product.externalId?.toLowerCase().includes(q);
+        const inVariationsSku = Array.isArray(product.variations)
+          ? product.variations.some(v => Array.isArray(v.options) && v.options.some(opt => (opt.sku || '').toLowerCase().includes(q)))
+          : false;
+        return inName || inBrand || inExternalId || inVariationsSku;
+      });
     }
 
     // Price filter
@@ -225,21 +266,13 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
         <Icon name="arrow-back" size={24} color={Colors.text} />
       </TouchableOpacity>
       
-      <View style={styles.searchContainer}>
-        <Icon name="search" size={20} color={Colors.textLight} style={styles.searchIcon} />
-        <TextInput
-          ref={searchInputRef}
-          style={styles.searchInput}
-          placeholder="Ürün ara..."
+      <View style={{ flex: 1 }}>
+        <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor={Colors.textMuted}
+          placeholder="Ürün ara..."
+          onSubmit={() => { /* filtreler otomatik tetikleniyor */ }}
         />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Icon name="close" size={20} color={Colors.textLight} />
-          </TouchableOpacity>
-        )}
       </View>
 
       <TouchableOpacity onPress={() => setFilterModalVisible(true)} style={styles.filterButton}>
@@ -250,6 +283,72 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
       </TouchableOpacity>
     </View>
   );
+
+  const renderTopTabs = () => (
+    <View style={styles.topTabsWrap}>
+      <TouchableOpacity
+        style={[styles.topTabButton, currentPage === 0 && styles.topTabActive]}
+        onPress={() => pagerRef.current?.scrollTo({ x: 0, animated: true })}
+      >
+        <Text style={[styles.topTabText, currentPage === 0 && styles.topTabTextActive]}>Tümü</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.topTabButton, currentPage === 1 && styles.topTabActive]}
+        onPress={() => pagerRef.current?.scrollTo({ x: width, animated: true })}
+      >
+        <Text style={[styles.topTabText, currentPage === 1 && styles.topTabTextActive]}>Flash İndirimler</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const isFlashCampaign = (c: Campaign) => {
+    if (!c.isActive || c.status !== 'active' || !c.endDate) return false;
+    const end = new Date(c.endDate).getTime();
+    const remainMs = end - nowTs;
+    return remainMs > 0 && remainMs <= 7 * 24 * 60 * 60 * 1000; // 1 hafta
+  };
+
+  const getFlashDealProducts = (): Product[] => {
+    const flashCamps = (campaigns || []).filter(isFlashCampaign);
+    const productIds = new Set<number>();
+    for (const c of flashCamps) {
+      if (Array.isArray(c.applicableProducts) && c.applicableProducts.length > 0) {
+        c.applicableProducts.forEach(id => productIds.add(Number(id)));
+      }
+    }
+    if (productIds.size === 0) return [];
+    const pool = selectedCategory ? products : (filteredProducts.length ? filteredProducts : products);
+    return pool.filter(p => productIds.has(p.id));
+  };
+
+  const formatHMS = (totalSeconds: number) => {
+    const sec = Math.max(0, totalSeconds);
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const renderFlashHeader = () => {
+    const ends = (campaigns || [])
+      .filter(isFlashCampaign)
+      .map(c => new Date(c.endDate as string).getTime())
+      .sort((a, b) => a - b);
+    const soonestEnd = ends[0];
+    const remainSec = soonestEnd ? Math.max(0, Math.floor((soonestEnd - nowTs) / 1000)) : 0;
+    return (
+      <View style={styles.flashHeader}>
+        <View style={styles.flashTitleWrap}>
+          <Icon name="flash-on" size={18} color={Colors.secondary} />
+          <Text style={styles.flashTitle}>Flash İndirimler</Text>
+        </View>
+        <View style={styles.flashTimer}>
+          <Icon name="timer" size={14} color={Colors.primary} />
+          <Text style={styles.flashTimerText}>Bitiş: {formatHMS(remainSec)}</Text>
+        </View>
+      </View>
+    );
+  };
 
   const renderCategories = () => (
     <View style={styles.categoriesSection}>
@@ -275,6 +374,10 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesContainer}
+          onScrollBeginDrag={() => setPagerEnabled(false)}
+          onScrollEndDrag={() => setPagerEnabled(true)}
+          onTouchStart={() => setPagerEnabled(false)}
+          onTouchEnd={() => setPagerEnabled(true)}
         >
           <TouchableOpacity
             style={[
@@ -490,44 +593,99 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar style="dark" />
       
       {renderHeader()}
-      {renderCategories()}
-      {renderSortAndView()}
-
-      <FlatList
-        data={filteredProducts}
-        renderItem={renderProduct}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={viewMode === 'grid' ? 2 : 1}
-        key={viewMode}
-        contentContainerStyle={[
-          styles.productList,
-          filteredProducts.length === 0 && styles.emptyList,
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[Colors.primary]}
-            tintColor={Colors.primary}
+      {renderTopTabs()}
+      <ScrollView
+        ref={pagerRef}
+        horizontal
+        pagingEnabled
+        scrollEnabled={pagerEnabled}
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => {
+          const page = Math.round(e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width);
+          setCurrentPage(page);
+        }}
+      >
+        <View style={{ width: width }}>
+          {renderCategories()}
+          {renderSortAndView()}
+          <FlatList
+            data={filteredProducts}
+            renderItem={renderProduct}
+            keyExtractor={(item) => item.id.toString()}
+            numColumns={viewMode === 'grid' ? 2 : 1}
+            key={viewMode}
+            contentContainerStyle={[
+              styles.productList,
+              filteredProducts.length === 0 && styles.emptyList,
+            ]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[Colors.primary]}
+                tintColor={Colors.primary}
+              />
+            }
+            ListEmptyComponent={renderEmptyState}
           />
-        }
-        ListEmptyComponent={renderEmptyState}
-      />
+        </View>
+        <View style={{ width: width }}>
+          {renderFlashHeader()}
+          <FlatList
+            data={getFlashDealProducts()}
+            renderItem={renderProduct}
+            keyExtractor={(item) => `flash-${item.id}`}
+            numColumns={viewMode === 'grid' ? 2 : 1}
+            key={`flash-${viewMode}`}
+            contentContainerStyle={[
+              styles.productList,
+              getFlashDealProducts().length === 0 && styles.emptyList,
+            ]}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyState}>
+                <Icon name="bolt" size={64} color={Colors.textMuted} />
+                <Text style={styles.emptyStateTitle}>Şu an flash indirim yok</Text>
+                <Text style={styles.emptyStateText}>Kısa süre sonra tekrar kontrol edin</Text>
+              </View>
+            )}
+          />
+        </View>
+      </ScrollView>
+
+      <View style={styles.tabIndicatorWrap}>
+        <TouchableOpacity style={[styles.tabIndicator, currentPage === 0 && styles.tabActive]} onPress={() => pagerRef.current?.scrollTo({ x: 0, animated: true })}>
+          <Text style={[styles.tabIndicatorText, currentPage === 0 && styles.tabIndicatorTextActive]}>Tümü</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tabIndicator, currentPage === 1 && styles.tabActive]} onPress={() => pagerRef.current?.scrollTo({ x: width, animated: true })}>
+          <Text style={[styles.tabIndicatorText, currentPage === 1 && styles.tabIndicatorTextActive]}>Flash</Text>
+        </TouchableOpacity>
+      </View>
 
       {filterModalVisible && (
         <FilterModal
           visible={filterModalVisible}
           onClose={() => setFilterModalVisible(false)}
           onApply={(newFilters) => {
-            setFilters(newFilters);
+            setFilters({
+              minPrice: newFilters.minPrice ?? 0,
+              maxPrice: newFilters.maxPrice ?? 10000,
+              brands: newFilters.brands ?? [],
+              inStock: newFilters.inStock ?? false,
+            });
             setFilterModalVisible(false);
           }}
-          initialFilters={filters}
-          products={products}
+          currentFilters={{
+            minPrice: filters.minPrice,
+            maxPrice: filters.maxPrice,
+            brands: filters.brands,
+            inStock: filters.inStock,
+          }}
+          categories={categories}
         />
       )}
     </SafeAreaView>
@@ -543,7 +701,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
     backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
@@ -559,7 +717,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: Spacing.md,
     marginHorizontal: Spacing.sm,
-    height: 44,
+    height: 38,
   },
   searchIcon: {
     marginRight: Spacing.sm,
@@ -587,13 +745,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   categoriesGradient: {
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
   categoriesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   categoriesTitle: {
     fontSize: 16,
@@ -626,11 +784,11 @@ const styles = StyleSheet.create({
   categoryChipGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: 25,
     backgroundColor: Colors.surface,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: Colors.border,
   },
   categoryChipIcon: {
@@ -719,5 +877,92 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textLight,
     textAlign: 'center',
+  },
+  topTabsWrap: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  topTabButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginHorizontal: 4,
+    backgroundColor: Colors.background,
+  },
+  topTabActive: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  topTabText: {
+    color: Colors.textLight,
+    fontWeight: '600',
+  },
+  topTabTextActive: {
+    color: Colors.primary,
+  },
+  flashHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  flashTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  flashTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+    marginLeft: 8,
+  },
+  flashTimer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  flashTimerText: {
+    marginLeft: 6,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  tabIndicatorWrap: {
+    position: 'absolute',
+    bottom: 16,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    ...Shadows.small,
+  },
+  tabIndicator: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  tabActive: {
+    backgroundColor: Colors.background,
+  },
+  tabIndicatorText: {
+    color: Colors.textLight,
+    fontWeight: '600',
+  },
+  tabIndicatorTextActive: {
+    color: Colors.primary,
   },
 });

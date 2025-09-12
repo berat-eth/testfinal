@@ -7,9 +7,7 @@ import {
   SafeAreaView,
   Dimensions,
   Animated,
-  ScrollView,
-  StatusBar,
-} from 'react-native';
+  ScrollView,} from 'react-native';
 import { useAppContext } from '../contexts/AppContext';
 
 interface OrderSuccessProps {
@@ -64,7 +62,7 @@ export const OrderSuccess: React.FC<OrderSuccessProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar style="dark" />
       
       {/* Header */}
       <View style={styles.header}>

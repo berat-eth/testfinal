@@ -31,13 +31,14 @@ import { AnythingLLMSettingsScreen } from '../views/AnythingLLMSettingsScreen';
 import EditProfileScreen from '../views/EditProfileScreen';
 import ChangePasswordScreen from '../views/ChangePasswordScreen';
 import { NotificationScreen } from '../views/NotificationScreen';
-import { WebViewScreen } from '../views/WebViewScreen';
 import PaymentScreen from '../views/PaymentScreen';
 import { CustomProductionScreen } from '../views/CustomProductionScreen';
 import { CustomProductionRequestsScreen } from '../views/CustomProductionRequestsScreen';
 import { AllCategoriesScreen } from '../views/AllCategoriesScreen';
 import MyCampaignsScreen from '../views/MyCampaignsScreen';
 import MyDiscountCodesScreen from '../views/MyDiscountCodesScreen';
+import StoreLocatorScreen from '../views/StoreLocatorScreen';
+import ReferralScreen from '../views/ReferralScreen';
 
 // Components
 import { HamburgerMenu } from '../components/HamburgerMenu';
@@ -280,6 +281,11 @@ const HomeStack = () => {
         options={{ title: 'Ürün Detayı' }}
       />
       <Stack.Screen 
+        name="StoreLocator" 
+        component={StoreLocatorScreen}
+        options={{ title: 'Mağazalar' }}
+      />
+      <Stack.Screen 
         name="AllCategories" 
         component={AllCategoriesScreen}
         options={{ headerShown: false }}
@@ -351,6 +357,11 @@ const ProductsStack = () => {
         options={{ title: 'Tüm Ürünler' }}
       />
       <Stack.Screen 
+        name="StoreLocator" 
+        component={StoreLocatorScreen}
+        options={{ title: 'Mağazalar' }}
+      />
+      <Stack.Screen 
         name="ProductDetail" 
         component={ProductDetailScreen}
         options={{ title: 'Ürün Detayı' }}
@@ -382,6 +393,11 @@ const ProfileStack = () => {
         name="ProfileMain" 
         component={ProfileScreen} 
         options={{ title: 'Hesabım' }}
+      />
+      <Stack.Screen 
+        name="StoreLocator" 
+        component={StoreLocatorScreen}
+        options={{ title: 'Mağazada Bul' }}
       />
       <Stack.Screen 
         name="CustomRequests" 
@@ -469,11 +485,6 @@ const ProfileStack = () => {
         options={{ title: 'Bildirimler', headerShown: false }}
       />
       <Stack.Screen 
-        name="WebView"
-        component={WebViewScreen as any}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
         name="Payment"
         component={PaymentScreen as any}
         options={{ title: 'Ödeme', headerShown: true }}
@@ -487,6 +498,11 @@ const ProfileStack = () => {
         name="MyDiscountCodes"
         component={MyDiscountCodesScreen as any}
         options={{ title: 'İndirim Kodlarım', headerShown: true }}
+      />
+      <Stack.Screen 
+        name="Referral"
+        component={ReferralScreen as any}
+        options={{ title: 'Referans Programı', headerShown: true }}
       />
     </Stack.Navigator>
   );

@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
   Image,
   Alert,
-  StatusBar,
   RefreshControl,
   TextInput,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../theme/colors';
@@ -467,7 +467,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+        <StatusBar style="light" />
         <LoadingIndicator />
       </SafeAreaView>
     );
@@ -476,7 +476,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ navigation }) => {
   if (cartItems.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+        <StatusBar style="light" />
         {renderHeader()}
         <View style={styles.emptyContainer}>
           <View style={styles.emptyStateContainer}>
@@ -502,7 +502,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <StatusBar style="light" />
       {renderHeader()}
       
       <FlatList

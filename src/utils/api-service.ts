@@ -219,7 +219,7 @@ class ApiService {
 
       return null;
     } catch (error) {
-      console.warn('⚠️ Cache read error:', error);
+      // Cache read error - silent
       return null;
     }
   }
@@ -378,7 +378,7 @@ class ApiService {
       } else {
         // If not JSON, get text and try to parse as JSON
         const text = await response.text();
-        console.warn(`⚠️ Non-JSON response received: ${text.substring(0, 200)}...`);
+        // Non-JSON response received - silent
         
         try {
           result = JSON.parse(text);
@@ -396,7 +396,7 @@ class ApiService {
       
       // Performance logging
       if (duration > 1000) {
-        console.warn(`⚠️ Slow API call: ${endpoint} took ${duration}ms`);
+        // Slow API call - silent
       } else {
         console.log(`⚡ API call: ${endpoint} took ${duration}ms`);
       }
@@ -428,7 +428,7 @@ class ApiService {
       // Enhanced retry logic with better offline detection
       if (retryCount < MAX_RETRIES && this.shouldRetry(error)) {
         const delay = this.retryDelays[retryCount] || this.retryDelays[this.retryDelays.length - 1];
-        console.warn(`🔄 Retrying request: ${endpoint} (attempt ${retryCount + 1}/${MAX_RETRIES + 1}) in ${delay}ms`);
+        // Retrying request - silent
         
         await new Promise(resolve => setTimeout(resolve, delay));
         
@@ -445,7 +445,7 @@ class ApiService {
             return this.request(endpoint, method, body, retryCount + 1, isOfflineRetry);
           }
         } catch (detectionError) {
-          console.warn('⚠️ Auto-detection failed:', detectionError);
+          // Auto-detection failed - silent
         }
       }
 
@@ -461,7 +461,7 @@ class ApiService {
       // Check if this is a backend connection error
       const { BackendErrorService } = require('../services/BackendErrorService');
       if (BackendErrorService.isBackendConnectionError(error, endpoint)) {
-        console.warn('🔥 Backend connection error detected, triggering error handler');
+        // Backend connection error detected - silent
         BackendErrorService.handleBackendError(() => {
           // Retry callback
           console.log('🔄 Retrying failed request after error modal');
@@ -738,15 +738,59 @@ class ApiService {
   }
 
   async getCartItems(userId: number): Promise<ApiResponse<any[]>> {
-    return this.request(`/cart/user/${userId}`);
+    let query = '';
+    if (userId === 1) {
+      try {
+        const { DiscountWheelController } = require('../controllers/DiscountWheelController');
+        const deviceId = await DiscountWheelController.getDeviceId();
+        query = `?deviceId=${encodeURIComponent(deviceId)}`;
+      } catch {}
+    }
+    return this.request(`/cart/user/${userId}${query}`);
   }
 
   async clearCart(userId: number): Promise<ApiResponse<boolean>> {
-    return this.request(`/cart/user/${userId}`, 'DELETE');
+    let endpoint = `/cart/user/${userId}`;
+    if (userId === 1) {
+      try {
+        const { DiscountWheelController } = require('../controllers/DiscountWheelController');
+        const deviceId = await DiscountWheelController.getDeviceId();
+        endpoint += `?deviceId=${encodeURIComponent(deviceId)}`;
+      } catch {}
+    }
+    return this.request(endpoint, 'DELETE');
   }
 
   async getCartTotal(userId: number): Promise<ApiResponse<number>> {
-    return this.request(`/cart/user/${userId}/total`);
+    let endpoint = `/cart/user/${userId}/total`;
+    if (userId === 1) {
+      try {
+        const { DiscountWheelController } = require('../controllers/DiscountWheelController');
+        const deviceId = await DiscountWheelController.getDeviceId();
+        endpoint += `?deviceId=${encodeURIComponent(deviceId)}`;
+      } catch {}
+    }
+    return this.request(endpoint);
+  }
+
+  async getCartTotalDetailed(userId: number): Promise<ApiResponse<{ subtotal: number; discount: number; shipping: number; total: number }>> {
+    let endpoint = `/cart/user/${userId}/total-detailed`;
+    if (userId === 1) {
+      try {
+        const { DiscountWheelController } = require('../controllers/DiscountWheelController');
+        const deviceId = await DiscountWheelController.getDeviceId();
+        endpoint += `?deviceId=${encodeURIComponent(deviceId)}`;
+      } catch {}
+    }
+    return this.request(endpoint);
+  }
+
+  async getCampaigns(): Promise<ApiResponse<any[]>> {
+    return this.request('/campaigns');
+  }
+
+  async createCampaign(data: any): Promise<ApiResponse<boolean>> {
+    return this.request('/campaigns', 'POST', data);
   }
 
   // Enhanced order endpoints
@@ -808,6 +852,28 @@ class ApiService {
       await this.setCache(cacheKey, result, result.isOffline);
     }
     return result;
+  }
+
+  // Store locator & in-store availability
+  async getStoresNearby(lat: number, lng: number, radiusKm: number = 25): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>(`/stores/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`);
+  }
+
+  async getInStoreAvailability(productId: number, lat: number, lng: number, radiusKm: number = 25): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>(`/stores/availability/${productId}?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`);
+  }
+
+  // Referral program
+  async getReferralInfo(userId: number): Promise<ApiResponse<{ code: string; url: string; invitedCount: number; rewardBalance: number }>> {
+    return this.request(`/referral/${userId}`);
+  }
+
+  async generateReferralLink(userId: number): Promise<ApiResponse<{ code: string; url: string }>> {
+    return this.request(`/referral/${userId}/generate`, 'POST');
+  }
+
+  async applyReferralCode(userId: number, code: string): Promise<ApiResponse<{ success: boolean }>> {
+    return this.request(`/referral/apply`, 'POST', { userId, code });
   }
 
   async getPriceRange(): Promise<ApiResponse<{ min: number; max: number }>> {
@@ -896,7 +962,7 @@ class ApiService {
             }
           }
         } catch (detectionError) {
-          console.warn('⚠️ Auto-detection failed:', detectionError);
+          // Auto-detection failed - silent
         }
       }
       

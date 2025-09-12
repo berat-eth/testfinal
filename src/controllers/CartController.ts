@@ -29,12 +29,24 @@ export class CartController {
           .map(([key, option]) => `${key}: ${option.value}`)
           .join(', ') : '';
 
+      // Cihaz bazlı misafir sepet izolasyonu
+      let deviceId: string | undefined = undefined;
+      if (userId === 1) {
+        try {
+          const { DiscountWheelController } = require('./DiscountWheelController');
+          deviceId = await DiscountWheelController.getDeviceId();
+        } catch (e) {
+          console.warn('⚠️ deviceId alınamadı, misafir sepet izolasyonu zayıflar:', e);
+        }
+      }
+
       const cartData = {
         userId,
         productId,
         quantity,
         variationString,
-        selectedVariations
+        selectedVariations,
+        deviceId
       };
 
       const response = await apiService.addToCart(cartData);
@@ -55,7 +67,8 @@ export class CartController {
           userId,
           productId,
           quantity,
-          selectedVariations
+          selectedVariations,
+          deviceId
         });
         return { success: false, message: 'Çevrimdışı mod - ürün ekleme isteği kuyruğa eklendi' };
       }

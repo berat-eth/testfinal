@@ -191,9 +191,6 @@ export default function MyCampaignsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Bana Özel Kampanyalar</Text>
-        </View>
         <LoadingIndicator />
       </SafeAreaView>
     );
@@ -201,12 +198,7 @@ export default function MyCampaignsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Bana Özel Kampanyalar</Text>
-        <TouchableOpacity onPress={onRefresh}>
-          <Ionicons name="refresh" size={24} color="#007bff" />
-        </TouchableOpacity>
-      </View>
+      {/* İç başlık kaldırıldı; üst başlık navigator tarafından geliyor */}
 
       <ScrollView
         style={styles.content}

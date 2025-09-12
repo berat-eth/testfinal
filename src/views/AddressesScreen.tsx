@@ -9,9 +9,7 @@ import {
   Alert,
   TextInput,
   Modal,
-  Dimensions,
-  StatusBar,
-} from 'react-native';
+  Dimensions,} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { UserController } from '../controllers/UserController';
@@ -276,7 +274,7 @@ export const AddressesScreen: React.FC<AddressesScreenProps> = ({ navigation, ro
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar style="dark" />
       
       {/* Simple Header */}
       <SafeAreaView>

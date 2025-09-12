@@ -5,9 +5,7 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
-  StatusBar,
-  Alert,
+  TouchableOpacity,Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -293,7 +291,7 @@ const OrderDetailScreen: React.FC<OrderDetailScreenProps> = ({ navigation, route
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#1A1A2E" />
+        <StatusBar style="light" />
         <LoadingIndicator />
       </SafeAreaView>
     );
@@ -302,7 +300,7 @@ const OrderDetailScreen: React.FC<OrderDetailScreenProps> = ({ navigation, route
   if (!order) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#1A1A2E" />
+        <StatusBar style="light" />
         {renderHeader()}
         <View style={styles.errorContainer}>
           <Icon name="error-outline" size={80} color={Colors.textMuted} />

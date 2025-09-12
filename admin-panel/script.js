@@ -1616,3 +1616,51 @@ window.openCreateCampaignModal = openCreateCampaignModal;
 window.openCreateSegmentModal = openCreateSegmentModal;
 window.closeModal = closeModal;
 window.createAutomaticSegments = createAutomaticSegments;
+window.createWeeklyFlashDeal = async function createWeeklyFlashDeal() {
+    try {
+        const name = prompt('Kampanya adı (ör: Haftalık Flash İndirim):', 'Haftalık Flash İndirim');
+        if (!name) return;
+        const discountType = prompt('İndirim türü (percentage|fixed):', 'percentage');
+        if (!discountType) return;
+        const discountValueStr = prompt(`İndirim değeri (${discountType === 'fixed' ? 'TL' : '%'}):`, discountType === 'fixed' ? '50' : '15');
+        if (!discountValueStr) return;
+        const discountValue = parseFloat(discountValueStr);
+        if (isNaN(discountValue)) return alert('Geçersiz indirim değeri');
+        const productIdsStr = prompt('Kapsanacak ürün ID listesi (virgülle ayrılmış, boş bırakılırsa tüm ürünlere uygulanır):', '');
+        const minOrderStr = prompt('Minimum sipariş tutarı (opsiyonel):', '0');
+        const minOrderAmount = parseFloat(minOrderStr || '0') || 0;
+
+        const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+        const body = {
+            name,
+            description: 'Yönetim panelinden oluşturulan 1 haftalık flash indirim',
+            type: 'discount',
+            status: 'active',
+            discountType,
+            discountValue,
+            minOrderAmount,
+            applicableProducts: productIdsStr ? productIdsStr.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x)) : null,
+            startDate: new Date().toISOString(),
+            endDate,
+            isActive: true
+        };
+
+        showLoading(true);
+        const res = await apiRequest('/campaigns', {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+        if (res && res.success) {
+            showNotification('Haftalık flash indirim oluşturuldu', 'success');
+            refreshCampaigns();
+        } else {
+            showNotification('Flash indirim oluşturulamadı', 'error');
+        }
+    } catch (e) {
+        console.error('Flash deal create error:', e);
+        showNotification('Flash indirim oluşturulurken hata oluştu', 'error');
+    } finally {
+        showLoading(false);
+    }
+};

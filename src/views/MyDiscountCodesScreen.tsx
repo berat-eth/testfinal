@@ -8,8 +8,8 @@ import {
   RefreshControl,
   Alert,
   Share,
-  Clipboard,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -51,7 +51,7 @@ export default function MyDiscountCodesScreen() {
 
   const handleCopyCode = async (code: string) => {
     try {
-      await Clipboard.setString(code);
+      await Clipboard.setStringAsync(code);
       Alert.alert('Başarılı', 'İndirim kodu panoya kopyalandı');
     } catch (error) {
       console.error('Error copying code:', error);
@@ -177,9 +177,6 @@ export default function MyDiscountCodesScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>İndirim Kodlarım</Text>
-        </View>
         <LoadingIndicator />
       </SafeAreaView>
     );
@@ -191,12 +188,7 @@ export default function MyDiscountCodesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>İndirim Kodlarım</Text>
-        <TouchableOpacity onPress={onRefresh}>
-          <Ionicons name="refresh" size={24} color="#007bff" />
-        </TouchableOpacity>
-      </View>
+      {/* İç başlık kaldırıldı; üst başlık navigator tarafından geliyor */}
 
       <ScrollView
         style={styles.content}

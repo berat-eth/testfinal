@@ -1703,19 +1703,54 @@ app.get('/api/products', authenticateTenant, async (req, res) => {
 app.get('/api/products/search', async (req, res) => {
   try {
     const { q } = req.query;
-    
+    const search = String(q || '').trim();
+    if (!search) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // Çoklu kiracı desteği: varsa kimliği doğrulanmış tenant üzerinden filtrele
+    // Not: Diğer uç noktalarda kullanılan tenant ara katmanı burada yoksa, tüm ürünlerde arama yapılır
+    const tenantId = req.tenant?.id;
+
+    // İsim/açıklama/marka + stok kodu (externalId) + varyasyon SKU alanlarında arama
+    // Varyasyon eşleşmesini getirmek için ürün tablosuna JOIN ile eşleştirip DISTINCT seçiyoruz
+    const params = tenantId
+      ? [
+          `%${search}%`, `%${search}%`, `%${search}%`, // name/description/brand
+          `%${search}%`, // externalId
+          `%${search}%`, // option sku
+          tenantId,
+        ]
+      : [
+          `%${search}%`, `%${search}%`, `%${search}%`, // name/description/brand
+          `%${search}%`, // externalId
+          `%${search}%`, // option sku
+        ];
+
+    const whereTenant = tenantId ? ' AND p.tenantId = ?' : '';
+
     const [rows] = await poolWrapper.execute(
-      'SELECT * FROM products WHERE name LIKE ? OR description LIKE ? OR brand LIKE ?',
-      [`%${q}%`, `%${q}%`, `%${q}%`]
+      `SELECT DISTINCT p.*
+       FROM products p
+       LEFT JOIN product_variations v ON v.productId = p.id
+       LEFT JOIN product_variation_options o ON o.variationId = v.id
+       WHERE (
+         p.name LIKE ?
+         OR p.description LIKE ?
+         OR p.brand LIKE ?
+         OR p.externalId LIKE ?
+         OR o.sku LIKE ?
+       )${whereTenant}
+       ORDER BY p.lastUpdated DESC
+       LIMIT 200`,
+      params
     );
-    
-    // Clean HTML entities from search results
+
     const cleanedProducts = rows.map(cleanProductData);
-    
-    res.json({ success: true, data: cleanedProducts });
+    return res.json({ success: true, data: cleanedProducts });
   } catch (error) {
     console.error('Error searching products:', error);
-    res.status(500).json({ success: false, message: 'Error searching products' });
+    return res.status(500).json({ success: false, message: 'Error searching products' });
   }
 });
 
@@ -1771,6 +1806,47 @@ app.get('/api/products/:id', async (req, res) => {
   } catch (error) {
     console.error('Error getting product:', error);
     res.status(500).json({ success: false, message: 'Error getting product' });
+  }
+});
+
+// Product Variations Endpoints
+app.get('/api/products/:productId/variations', async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const [rows] = await poolWrapper.execute('SELECT * FROM product_variations WHERE product_id = ?', [productId]);
+    
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error fetching product variations:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.get('/api/variations/:variationId/options', async (req, res) => {
+  try {
+    const { variationId } = req.params;
+    const [rows] = await poolWrapper.execute('SELECT * FROM variation_options WHERE variation_id = ?', [variationId]);
+    
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error fetching variation options:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.get('/api/variation-options/:optionId', async (req, res) => {
+  try {
+    const { optionId } = req.params;
+    const [rows] = await poolWrapper.execute('SELECT * FROM variation_options WHERE id = ?', [optionId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Variation option not found' });
+    }
+    
+    res.json({ success: true, data: rows[0] });
+  } catch (error) {
+    console.error('Error fetching variation option:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
@@ -2034,7 +2110,7 @@ async function startServer() {
 
   app.post('/api/cart', authenticateTenant, async (req, res) => {
     try {
-      const { userId, productId, quantity, variationString, selectedVariations } = req.body;
+      const { userId, productId, quantity, variationString, selectedVariations, deviceId } = req.body;
       console.log(`🛒 Server: Adding to cart - User: ${userId}, Product: ${productId}, Quantity: ${quantity}`);
       
       // Validate required fields
@@ -2065,10 +2141,16 @@ async function startServer() {
       }
       
       // Check if item already exists in cart
-      const [existingItem] = await poolWrapper.execute(
-        'SELECT id, quantity FROM cart WHERE userId = ? AND productId = ? AND variationString = ? AND tenantId = ?',
-        [userId, productId, variationString || '', tenantId]
-      );
+      let existingItemQuery = 'SELECT id, quantity FROM cart WHERE tenantId = ? AND productId = ? AND variationString = ?';
+      const existingParams = [tenantId, productId, variationString || ''];
+      if (userId && userId !== 1) {
+        existingItemQuery += ' AND userId = ?';
+        existingParams.push(userId);
+      } else {
+        existingItemQuery += ' AND userId = 1 AND deviceId = ?';
+        existingParams.push(deviceId || '');
+      }
+      const [existingItem] = await poolWrapper.execute(existingItemQuery, existingParams);
       
       if (existingItem.length > 0) {
         // Update existing item
@@ -2087,8 +2169,8 @@ async function startServer() {
       } else {
         // Add new item
         const [result] = await poolWrapper.execute(
-          'INSERT INTO cart (tenantId, userId, productId, quantity, variationString, selectedVariations) VALUES (?, ?, ?, ?, ?, ?)',
-          [tenantId, userId, productId, quantity, variationString || '', JSON.stringify(selectedVariations || {})]
+          'INSERT INTO cart (tenantId, userId, deviceId, productId, quantity, variationString, selectedVariations) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [tenantId, userId, userId === 1 ? (deviceId || '') : null, productId, quantity, variationString || '', JSON.stringify(selectedVariations || {})]
         );
         
         console.log(`✅ Server: Added new cart item ${result.insertId} for user ${userId}`);
@@ -2153,19 +2235,27 @@ async function startServer() {
   app.get('/api/cart/user/:userId', authenticateTenant, async (req, res) => {
     try {
       const { userId } = req.params;
+      const { deviceId } = req.query;
       console.log(`🛒 Server: Getting cart for user ${userId}`);
       
       // Tenant ID from authentication
       const tenantId = req.tenant?.id || 1;
       
-      const [rows] = await poolWrapper.execute(
-        `SELECT c.*, p.name, p.price, p.image, p.stock 
+      let getCartSql = `SELECT c.*, p.name, p.price, p.image, p.stock 
          FROM cart c 
          JOIN products p ON c.productId = p.id 
-         WHERE c.userId = ? AND c.tenantId = ?
-         ORDER BY c.createdAt DESC`,
-        [userId, tenantId]
-      );
+         WHERE c.tenantId = ?`;
+      const getCartParams = [tenantId];
+      if (parseInt(userId) !== 1) {
+        getCartSql += ' AND c.userId = ?';
+        getCartParams.push(userId);
+      } else {
+        getCartSql += ' AND c.userId = 1 AND c.deviceId = ?';
+        getCartParams.push(String(deviceId || ''));
+      }
+      getCartSql += ' ORDER BY c.createdAt DESC';
+
+      const [rows] = await poolWrapper.execute(getCartSql, getCartParams);
       
       console.log(`✅ Server: Found ${rows.length} cart items for user ${userId}`);
       res.json({ success: true, data: rows });
@@ -2178,14 +2268,22 @@ async function startServer() {
   app.get('/api/cart/user/:userId/total', authenticateTenant, async (req, res) => {
     try {
       const { userId } = req.params;
+      const { deviceId } = req.query;
       
-      const [rows] = await poolWrapper.execute(
-        `SELECT SUM(c.quantity * p.price) as total
+      let totalSql = `SELECT SUM(c.quantity * p.price) as total
          FROM cart c 
          JOIN products p ON c.productId = p.id 
-         WHERE c.userId = ? AND c.tenantId = ?`,
-        [userId, req.tenant?.id || 1]
-      );
+         WHERE c.tenantId = ?`;
+      const totalParams = [req.tenant?.id || 1];
+      if (parseInt(userId) !== 1) {
+        totalSql += ' AND c.userId = ?';
+        totalParams.push(userId);
+      } else {
+        totalSql += ' AND c.userId = 1 AND c.deviceId = ?';
+        totalParams.push(String(deviceId || ''));
+      }
+
+      const [rows] = await poolWrapper.execute(totalSql, totalParams);
       
       const total = rows[0]?.total || 0;
       res.json({ success: true, data: total });
@@ -2195,14 +2293,139 @@ async function startServer() {
     }
   });
 
+  // Detailed total with campaigns applied
+  app.get('/api/cart/user/:userId/total-detailed', authenticateTenant, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { deviceId } = req.query;
+      const tenantId = req.tenant?.id || 1;
+
+      // Get cart items with product prices
+      let itemsSql = `SELECT c.productId, c.quantity, p.price
+        FROM cart c JOIN products p ON c.productId = p.id
+        WHERE c.tenantId = ?`;
+      const itemsParams = [tenantId];
+      if (parseInt(userId) !== 1) {
+        itemsSql += ' AND c.userId = ?';
+        itemsParams.push(userId);
+      } else {
+        itemsSql += ' AND c.userId = 1 AND c.deviceId = ?';
+        itemsParams.push(String(deviceId || ''));
+      }
+
+      const [cartRows] = await poolWrapper.execute(itemsSql, itemsParams);
+      const subtotal = cartRows.reduce((sum, r) => sum + (Number(r.price) || 0) * (Number(r.quantity) || 0), 0);
+
+      // Load active campaigns
+      const [campaigns] = await poolWrapper.execute(
+        `SELECT * FROM campaigns WHERE tenantId = ? AND isActive = 1 AND status = 'active'
+         AND (startDate IS NULL OR startDate <= NOW()) AND (endDate IS NULL OR endDate >= NOW())`,
+        [tenantId]
+      );
+
+      let discountTotal = 0;
+      let shipping = subtotal >= 500 ? 0 : 29.9; // default policy fallback
+
+      // Apply product-specific discounts
+      for (const camp of campaigns) {
+        if (camp.type === 'discount' && camp.applicableProducts) {
+          try {
+            const applicable = typeof camp.applicableProducts === 'string' ? JSON.parse(camp.applicableProducts) : camp.applicableProducts;
+            const set = new Set(Array.isArray(applicable) ? applicable : []);
+            for (const row of cartRows) {
+              if (set.has(row.productId)) {
+                const price = Number(row.price) || 0;
+                const qty = Number(row.quantity) || 0;
+                if (camp.discountType === 'percentage') {
+                  discountTotal += (price * qty) * (Number(camp.discountValue) || 0) / 100;
+                } else if (camp.discountType === 'fixed') {
+                  discountTotal += (Number(camp.discountValue) || 0) * qty;
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      // Apply cart threshold discounts and free shipping
+      for (const camp of campaigns) {
+        if (camp.type === 'free_shipping' && subtotal >= (Number(camp.minOrderAmount) || 0)) {
+          shipping = 0;
+        }
+        if (camp.type === 'discount' && (!camp.applicableProducts) && subtotal >= (Number(camp.minOrderAmount) || 0)) {
+          if (camp.discountType === 'percentage') {
+            discountTotal += subtotal * (Number(camp.discountValue) || 0) / 100;
+          } else if (camp.discountType === 'fixed') {
+            discountTotal += Number(camp.discountValue) || 0;
+          }
+        }
+      }
+
+      // Cap max discount amount if defined
+      for (const camp of campaigns) {
+        if (camp.maxDiscountAmount) {
+          discountTotal = Math.min(discountTotal, Number(camp.maxDiscountAmount) || discountTotal);
+        }
+      }
+
+      const total = Math.max(0, subtotal - discountTotal + shipping);
+
+      res.json({ success: true, data: { subtotal, discount: Number(discountTotal.toFixed(2)), shipping: Number(shipping.toFixed(2)), total: Number(total.toFixed(2)) } });
+    } catch (error) {
+      console.error('❌ Error getting detailed cart total:', error);
+      res.status(500).json({ success: false, message: 'Error getting detailed cart total' });
+    }
+  });
+
+  // Campaign endpoints
+  app.get('/api/campaigns', authenticateTenant, async (req, res) => {
+    try {
+      const tenantId = req.tenant?.id || 1;
+      const [rows] = await poolWrapper.execute(
+        `SELECT * FROM campaigns WHERE tenantId = ? ORDER BY updatedAt DESC`,
+        [tenantId]
+      );
+      res.json({ success: true, data: rows });
+    } catch (error) {
+      console.error('❌ Error listing campaigns:', error);
+      res.status(500).json({ success: false, message: 'Error listing campaigns' });
+    }
+  });
+
+  app.post('/api/campaigns', authenticateTenant, async (req, res) => {
+    try {
+      const tenantId = req.tenant?.id || 1;
+      const { name, description, type, status = 'active', discountType, discountValue = 0, minOrderAmount = 0, maxDiscountAmount = null, applicableProducts = null, excludedProducts = null, startDate = null, endDate = null, isActive = true } = req.body;
+
+      await poolWrapper.execute(
+        `INSERT INTO campaigns (tenantId, name, description, type, status, discountType, discountValue, minOrderAmount, maxDiscountAmount, applicableProducts, excludedProducts, startDate, endDate, isActive)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [tenantId, name || 'Campaign', description || '', type || 'discount', status, discountType || 'percentage', discountValue, minOrderAmount, maxDiscountAmount, applicableProducts ? JSON.stringify(applicableProducts) : null, excludedProducts ? JSON.stringify(excludedProducts) : null, startDate, endDate, isActive ? 1 : 0]
+      );
+
+      res.json({ success: true, message: 'Campaign created' });
+    } catch (error) {
+      console.error('❌ Error creating campaign:', error);
+      res.status(500).json({ success: false, message: 'Error creating campaign' });
+    }
+  });
+
   app.delete('/api/cart/user/:userId', authenticateTenant, async (req, res) => {
     try {
       const { userId } = req.params;
+      const { deviceId } = req.query;
       
-      await poolWrapper.execute(
-        'DELETE FROM cart WHERE userId = ? AND tenantId = ?',
-        [userId, req.tenant?.id || 1]
-      );
+      let deleteSql = 'DELETE FROM cart WHERE tenantId = ?';
+      const deleteParams = [req.tenant?.id || 1];
+      if (parseInt(userId) !== 1) {
+        deleteSql += ' AND userId = ?';
+        deleteParams.push(userId);
+      } else {
+        deleteSql += ' AND userId = 1 AND deviceId = ?';
+        deleteParams.push(String(deviceId || ''));
+      }
+
+      await poolWrapper.execute(deleteSql, deleteParams);
       
       res.json({ 
         success: true, 
@@ -4389,6 +4612,105 @@ function getBankInfo(tenantId) {
     swiftCode: 'HUGLTR2A'
   };
 }
+
+// ==================== REFERRAL ENDPOINTS ====================
+
+// Get user referral info
+app.get('/api/referral/:userId', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Get user's referral code and stats
+    const [userRows] = await poolWrapper.execute(
+      'SELECT referral_code, referral_count FROM users WHERE id = ? AND tenantId = ?',
+      [userId, req.tenant.id]
+    );
+    
+    if (userRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    const user = userRows[0];
+    
+    // Get referral earnings
+    const [earningsRows] = await poolWrapper.execute(
+      'SELECT SUM(amount) as total_earnings FROM referral_earnings WHERE referrer_id = ? AND tenantId = ?',
+      [userId, req.tenant.id]
+    );
+    
+    const totalEarnings = earningsRows[0].total_earnings || 0;
+    
+    res.json({
+      success: true,
+      data: {
+        referralCode: user.referral_code,
+        referralCount: user.referral_count || 0,
+        totalEarnings: totalEarnings,
+        referralLink: `${process.env.FRONTEND_URL || 'https://hugluoutdoor.com'}/referral/${user.referral_code}`
+      }
+    });
+  } catch (error) {
+    console.error('Error getting referral info:', error);
+    res.status(500).json({ success: false, message: 'Error getting referral info' });
+  }
+});
+
+// Use referral code
+app.post('/api/referral/use', authenticateTenant, async (req, res) => {
+  try {
+    const { referralCode, userId } = req.body;
+    
+    // Check if referral code exists and is not self-referral
+    const [referrerRows] = await poolWrapper.execute(
+      'SELECT id, referral_code FROM users WHERE referral_code = ? AND tenantId = ?',
+      [referralCode, req.tenant.id]
+    );
+    
+    if (referrerRows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid referral code' });
+    }
+    
+    const referrerId = referrerRows[0].id;
+    
+    if (referrerId === userId) {
+      return res.status(400).json({ success: false, message: 'Cannot refer yourself' });
+    }
+    
+    // Check if user already used a referral code
+    const [existingRows] = await poolWrapper.execute(
+      'SELECT id FROM users WHERE id = ? AND referred_by IS NOT NULL AND tenantId = ?',
+      [userId, req.tenant.id]
+    );
+    
+    if (existingRows.length > 0) {
+      return res.status(400).json({ success: false, message: 'User already used a referral code' });
+    }
+    
+    // Update user with referral
+    await poolWrapper.execute(
+      'UPDATE users SET referred_by = ? WHERE id = ? AND tenantId = ?',
+      [referrerId, userId, req.tenant.id]
+    );
+    
+    // Update referrer's count
+    await poolWrapper.execute(
+      'UPDATE users SET referral_count = COALESCE(referral_count, 0) + 1 WHERE id = ? AND tenantId = ?',
+      [referrerId, req.tenant.id]
+    );
+    
+    // Add referral earnings
+    const referralBonus = 50; // 50 TL bonus
+    await poolWrapper.execute(
+      'INSERT INTO referral_earnings (referrer_id, referred_id, amount, tenantId) VALUES (?, ?, ?, ?)',
+      [referrerId, userId, referralBonus, req.tenant.id]
+    );
+    
+    res.json({ success: true, message: 'Referral code applied successfully', bonus: referralBonus });
+  } catch (error) {
+    console.error('Error using referral code:', error);
+    res.status(500).json({ success: false, message: 'Error using referral code' });
+  }
+});
 
 // ==================== WHATSAPP WEBHOOK ENDPOINTS ====================
 

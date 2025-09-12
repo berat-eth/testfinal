@@ -74,6 +74,12 @@ const ProfileIcons = {
       resizeMode="contain"
     />
   ),
+  refer: ({ color }: { color: string }) => (
+    <Icon name="group-add" size={24} color={color} />
+  ),
+  store: ({ color }: { color: string }) => (
+    <Icon name="store" size={24} color={color} />
+  ),
   heart: ({ color }: { color: string }) => (
     <Image 
       source={require('../../assets/favorite.png')} 
@@ -742,6 +748,30 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             <View style={styles.modernMenuContent}>
               <Text style={styles.modernMenuTitle}>Destek</Text>
               <Text style={styles.modernMenuSubtitle}>Yardım ve iletişim</Text>
+            </View>
+            <Icon name="chevron-right" size={24} color="#9ca3af" />
+          </TouchableOpacity>
+
+          {/* Referans Programı */}
+          <TouchableOpacity style={styles.modernMenuItem} onPress={() => navigation.navigate('Referral')}>
+            <View style={styles.simpleMenuIcon}>
+              <ProfileIcons.refer color="#6b7280" />
+            </View>
+            <View style={styles.modernMenuContent}>
+              <Text style={styles.modernMenuTitle}>Referans Programı</Text>
+              <Text style={styles.modernMenuSubtitle}>Kod oluştur, paylaş ve kazan</Text>
+            </View>
+            <Icon name="chevron-right" size={24} color="#9ca3af" />
+          </TouchableOpacity>
+
+          {/* Mağazada Bul */}
+          <TouchableOpacity style={styles.modernMenuItem} onPress={() => navigation.navigate('StoreLocator', {})}>
+            <View style={styles.simpleMenuIcon}>
+              <ProfileIcons.store color="#6b7280" />
+            </View>
+            <View style={styles.modernMenuContent}>
+              <Text style={styles.modernMenuTitle}>Mağazada Bul</Text>
+              <Text style={styles.modernMenuSubtitle}>Yakın mağazaları görüntüle</Text>
             </View>
             <Icon name="chevron-right" size={24} color="#9ca3af" />
           </TouchableOpacity>

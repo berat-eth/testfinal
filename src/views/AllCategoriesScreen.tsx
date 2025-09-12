@@ -8,9 +8,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
-  Image,
-  StatusBar,
-} from 'react-native';
+  Image,} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Colors } from '../theme/colors';
 import { Spacing, Shadows } from '../theme/theme';
@@ -146,7 +144,7 @@ export const AllCategoriesScreen: React.FC<AllCategoriesScreenProps> = ({ naviga
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+        <StatusBar style="dark" />
         {renderHeader()}
         <View style={styles.loadingContainer}>
           <Icon name="refresh" size={32} color={Colors.primary} />

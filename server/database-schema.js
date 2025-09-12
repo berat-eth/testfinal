@@ -15,7 +15,7 @@ async function createDatabaseSchema(pool) {
     console.log(`📋 Found existing tables: ${existingTables.join(', ')}`);
     
     // If all required tables exist, skip schema creation
-    const requiredTables = ['tenants', 'users', 'products', 'product_variations', 'product_variation_options', 'cart', 'orders', 'order_items', 'reviews', 'user_wallets', 'wallet_transactions', 'custom_production_requests', 'custom_production_items', 'chatbot_analytics', 'wallet_recharge_requests'];
+    const requiredTables = ['tenants', 'users', 'products', 'product_variations', 'product_variation_options', 'cart', 'orders', 'order_items', 'reviews', 'user_wallets', 'wallet_transactions', 'custom_production_requests', 'custom_production_items', 'chatbot_analytics', 'wallet_recharge_requests', 'referral_earnings'];
     const missingTables = requiredTables.filter(table => !existingTables.includes(table));
     
     if (missingTables.length === 0) {
@@ -59,10 +59,16 @@ async function createDatabaseSchema(pool) {
         phone VARCHAR(20),
         birthDate DATE,
         address TEXT,
+        referral_code VARCHAR(20) UNIQUE,
+        referred_by INT NULL,
+        referral_count INT DEFAULT 0,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY (referred_by) REFERENCES users(id) ON DELETE SET NULL,
         INDEX idx_tenant_user (tenantId),
         INDEX idx_email_tenant (email, tenantId),
+        INDEX idx_referral_code (referral_code),
+        INDEX idx_referred_by (referred_by),
         UNIQUE KEY unique_email_per_tenant (email, tenantId)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
@@ -151,6 +157,7 @@ async function createDatabaseSchema(pool) {
         id INT AUTO_INCREMENT PRIMARY KEY,
         tenantId INT NOT NULL,
         userId INT NOT NULL,
+        deviceId VARCHAR(255) NULL,
         productId INT NOT NULL,
         quantity INT NOT NULL,
         variationString VARCHAR(500),
@@ -161,10 +168,25 @@ async function createDatabaseSchema(pool) {
         FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE,
         INDEX idx_tenant_cart (tenantId),
         INDEX idx_user_cart (userId),
-        INDEX idx_product_cart (productId)
+        INDEX idx_product_cart (productId),
+        INDEX idx_device_cart (deviceId)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
     console.log('✅ Cart table ready');
+
+    // Ensure deviceId column exists in cart table
+    const [cartColumns] = await pool.execute(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'cart'
+    `);
+    const existingCartColumns = cartColumns.map(col => col.COLUMN_NAME);
+    if (!existingCartColumns.includes('deviceId')) {
+      await pool.execute('ALTER TABLE cart ADD COLUMN deviceId VARCHAR(255) NULL');
+      await pool.execute('CREATE INDEX idx_device_cart ON cart(deviceId)');
+      console.log('✅ Added deviceId column to cart table');
+    }
 
     // Orders table
     await pool.execute(`
@@ -755,6 +777,29 @@ async function createDatabaseSchema(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
     console.log('✅ User discount codes table ready');
+    
+    // Referral earnings table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS referral_earnings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenantId INT NOT NULL,
+        referrer_id INT NOT NULL,
+        referred_id INT NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        status ENUM('pending', 'paid', 'cancelled') DEFAULT 'pending',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        paidAt TIMESTAMP NULL,
+        FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY (referrer_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (referred_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_tenant_earnings (tenantId),
+        INDEX idx_referrer_earnings (referrer_id),
+        INDEX idx_referred_earnings (referred_id),
+        INDEX idx_status (status),
+        INDEX idx_created (createdAt)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('✅ Referral earnings table ready');
     
     // Re-enable foreign key checks
     await pool.execute('SET FOREIGN_KEY_CHECKS = 1');

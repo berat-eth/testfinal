@@ -7,9 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Alert,
-  StatusBar,
-  FlatList,
+  Alert,FlatList,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -202,7 +200,7 @@ export const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigati
       colors={[Colors.primary, Colors.primary + 'dd']}
       style={styles.header}
     >
-      <StatusBar barStyle="light-content" />
+      <StatusBar style="light" />
       <View style={styles.headerContent}>
         <TouchableOpacity
           style={styles.backButton}
@@ -307,7 +305,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   header: {
-    paddingTop: StatusBar.currentHeight || 20,
+    paddingTop: 20,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },

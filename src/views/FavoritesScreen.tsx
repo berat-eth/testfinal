@@ -317,22 +317,7 @@ export const FavoritesScreen: React.FC<FavoritesScreenProps> = ({ navigation }) 
 
   return (
     <SafeAreaView style={styles.modernContainer}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Favorilerim</Text>
-        <View style={styles.headerActions}>
-          {favorites.length > 0 && (
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={toggleSelectionMode}
-            >
-              <Text style={styles.headerButtonText}>
-                {isSelectionMode ? 'İptal' : 'Seç'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      {/* İç başlık kaldırıldı; üst başlık navigator tarafından yönetiliyor */}
 
       {/* Selection Actions */}
       {isSelectionMode && selectedItems.length > 0 && (

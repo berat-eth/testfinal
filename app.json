@@ -6,12 +6,15 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -27,8 +30,8 @@
       "permissions": [
         "USE_BIOMETRIC",
         "USE_FINGERPRINT",
-        "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
       ],
       "package": "com.berat_3322.hugluoutdoor"
     },
@@ -39,6 +42,11 @@
       "eas": {
         "projectId": "bb72d05a-27a4-4f48-8cec-872092027485"
       }
-    }
+    },
+    "plugins": [
+      "expo-location",
+      "expo-local-authentication",
+      "expo-image-picker"
+    ]
   }
 }

@@ -10,9 +10,9 @@ import {
   Image,
   TouchableOpacity,
   RefreshControl,
-  StatusBar,
   Alert,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Colors, Gradients } from '../theme/colors';
@@ -52,9 +52,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [popularProductsCounter, setPopularProductsCounter] = useState(0);
   const [personalizedContent, setPersonalizedContent] = useState<PersonalizedContent | null>(null);
   const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [nowTs, setNowTs] = useState<number>(Date.now());
   const [countdownTimer, setCountdownTimer] = useState(20 * 60); // 20 dakika = 1200 saniye
   const scrollRef = useRef<ScrollView>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const nowIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const COUNTDOWN_STORAGE_KEY = 'home_popular_countdown_remaining';
   const COUNTDOWN_SAVED_AT_KEY = 'home_popular_countdown_saved_at';
@@ -134,6 +137,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       AsyncStorage.setItem(COUNTDOWN_STORAGE_KEY, String(countdownTimer)).catch(() => {});
       AsyncStorage.setItem(COUNTDOWN_SAVED_AT_KEY, String(Date.now())).catch(() => {});
       stopCountdownTimer(); // Cleanup'ta timer'ı durdur
+      if (nowIntervalRef.current) {
+        clearInterval(nowIntervalRef.current);
+        nowIntervalRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -190,7 +197,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       
       setCategories(Array.isArray(cats) ? cats : []);
 
-      // Load personalized content and campaigns only if logged in
+      // Kampanyaları (login gerektirmeden) yükle
+      try {
+        const allCampaigns = await CampaignController.getCampaigns();
+        setCampaigns(Array.isArray(allCampaigns) ? allCampaigns : []);
+        // Sayaç için global bir now ticker başlat
+        if (!nowIntervalRef.current) {
+          nowIntervalRef.current = setInterval(() => setNowTs(Date.now()), 1000);
+        }
+      } catch (e) {
+        console.error('Error loading campaigns:', e);
+        setCampaigns([]);
+      }
+
+      // Kişiselleştirilmiş içerik ve kullanıcıya özel kampanyalar (giriş yapılmışsa)
       try {
         const isLoggedIn = await UserController.isLoggedIn();
         if (isLoggedIn) {
@@ -302,6 +322,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const formatHMS = (totalSeconds: number) => {
+    const sec = Math.max(0, totalSeconds);
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   // Çakışmayı önleyen yardımcı fonksiyon
@@ -673,6 +701,91 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     </View>
   );
 
+  const renderCampaigns = () => {
+    const activeCampaigns = (campaigns || []).filter(c => c.isActive && c.status === 'active');
+    if (activeCampaigns.length === 0) return null;
+    return (
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Özel Teklifler</Text>
+            <Text style={styles.sectionSubtitle}>Güncel kampanyalar</Text>
+          </View>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.offerList}
+        >
+          {activeCampaigns.slice(0, 6).map((c) => (
+            <View key={`camp-${c.id}`} style={[styles.offerCard, { backgroundColor: getOfferColor(c.type) }] }>
+              <View style={styles.offerHeader}>
+                <View style={styles.offerIcon}>
+                  <Icon name={getOfferIcon(c.type)} size={20} color="white" />
+                </View>
+                <View style={styles.offerInfo}>
+                  <Text style={styles.offerTitle} numberOfLines={2}>{c.name}</Text>
+                  {!!c.description && (
+                    <Text style={styles.offerDescription} numberOfLines={2}>{c.description}</Text>
+                  )}
+                </View>
+              </View>
+              {typeof c.discountValue === 'number' && c.discountValue > 0 && (
+                <View style={styles.offerDiscount}>
+                  <Text style={styles.discountText}>
+                    {c.discountType === 'percentage' ? `%${c.discountValue} İndirim` : `${c.discountValue} TL İndirim`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const renderFlashDeals = () => {
+    const now = nowTs;
+    const flash = (campaigns || []).filter(c => c.isActive && c.status === 'active' && c.endDate);
+    if (flash.length === 0) return null;
+    return (
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleContainer}>
+            <Icon name="flash-on" size={18} color={Colors.secondary} />
+            <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>Flash İndirimler</Text>
+          </View>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.offerList}
+        >
+          {flash.slice(0, 6).map(c => {
+            const end = new Date(c.endDate as string).getTime();
+            const remainSec = Math.max(0, Math.floor((end - now) / 1000));
+            return (
+              <View key={`flash-${c.id}`} style={[styles.offerCard, { backgroundColor: '#dc3545' }] }>
+                <View style={styles.offerHeader}>
+                  <View style={styles.offerIcon}>
+                    <Icon name="bolt" size={20} color="white" />
+                  </View>
+                  <View style={styles.offerInfo}>
+                    <Text style={styles.offerTitle} numberOfLines={2}>{c.name}</Text>
+                    <Text style={styles.offerDescription} numberOfLines={2}>{c.description || 'Süre dolmadan yakalayın!'}</Text>
+                  </View>
+                </View>
+                <View style={[styles.offerDiscount, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                  <Text style={styles.discountText}>Bitişe Kalan: {formatHMS(remainSec)}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  };
+
   const renderPersonalizedOffers = () => {
     if (!personalizedContent || personalizedContent.personalizedOffers.length === 0) {
       return null;
@@ -763,7 +876,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar style="dark" />
       
 
       <ScrollView
@@ -779,6 +892,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       >
         {renderHeroSlider()}
         {renderCategories()}
+        {renderFlashDeals()}
+        {renderCampaigns()}
         {renderPersonalizedOffers()}
         {renderRecommendedProducts()}
         {renderPopularProducts()}

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StatusBar } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -160,12 +160,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     console.log('🎨 Updating theme mode:', mode, 'isDark:', shouldBeDark);
     setIsDark(shouldBeDark);
     
-    // Update status bar with error handling
-    try {
-      StatusBar.setBarStyle(shouldBeDark ? 'light-content' : 'dark-content', true);
-    } catch (error) {
-      console.warn('StatusBar update failed:', error);
-    }
+    // StatusBar is now handled by expo-status-bar automatically
+    console.log('StatusBar will be updated automatically by expo-status-bar');
     console.log('✅ Theme updated successfully');
   };
 

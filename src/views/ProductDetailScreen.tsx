@@ -23,6 +23,7 @@ import { ReviewList } from '../components/ReviewList';
 import { VariationSelector } from '../components/VariationSelector';
 import { ProductVariationService } from '../services/ProductVariationService';
 import { Colors } from '../theme/colors';
+import { ModernButton } from '../components/ui/ModernButton';
 
 interface ProductDetailScreenProps {
   navigation: any;
@@ -47,6 +48,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const [currentStock, setCurrentStock] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [viewerCount, setViewerCount] = useState<number>(0);
+  const [showViewer, setShowViewer] = useState<boolean>(false);
 
   const { productId } = route.params;
 
@@ -54,6 +57,12 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     loadProduct();
     loadCurrentUser();
     checkIfFavorite();
+    // Rastgele izleyici sayısı üret ve göster
+    const count = Math.floor(Math.random() * 20) + 1; // 1..20
+    setViewerCount(count);
+    setShowViewer(true);
+    const hideTimer = setTimeout(() => setShowViewer(false), 8000); // 8 sn sonra gizle
+    return () => clearTimeout(hideTimer);
   }, [productId]);
 
   useEffect(() => {
@@ -332,6 +341,12 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        {showViewer && (
+          <View style={styles.viewerToast}>
+            <Icon name="visibility" size={16} color="#1A1A1A" />
+            <Text style={styles.viewerToastText}>Bu ürünü şu anda {viewerCount} kişi inceliyor</Text>
+          </View>
+        )}
         {/* Ana Görsel */}
         <View style={styles.imageContainer}>
           <Image
@@ -514,6 +529,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           )}
         </View>
       </ScrollView>
+
 
       {currentStock > 0 && (
         <View style={styles.footer}>
@@ -830,5 +846,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  viewerToast: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  viewerToastText: {
+    marginLeft: 6,
+    fontSize: 12,
+    color: '#1A1A1A',
+    fontWeight: '500',
   },
 });

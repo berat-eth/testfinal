@@ -117,6 +117,22 @@ export class ProductController {
         console.log(`✅ API returned ${response.data.length} search results for: "${trimmedQuery}"`);
         const products = response.data.map((apiProduct: any) => this.mapApiProductToAppProduct(apiProduct));
         
+        // Ek: Eğer sonuç yoksa ve sorgu stok kodu/sku'ya benziyorsa, local filtre uygula
+        if (products.length === 0) {
+          const looksLikeSku = /[a-z0-9\-_/]{3,}/i.test(trimmedQuery);
+          if (looksLikeSku) {
+            const all = await this.getAllProducts();
+            const q = trimmedQuery.toLowerCase();
+            const skuFiltered = all.filter(p => {
+              const inExternalId = p.externalId?.toLowerCase().includes(q);
+              const inVariationsSku = Array.isArray(p.variations)
+                ? p.variations.some(v => Array.isArray(v.options) && v.options.some(opt => (opt.sku || '').toLowerCase().includes(q)))
+                : false;
+              return inExternalId || inVariationsSku;
+            });
+            return skuFiltered;
+          }
+        }
         return products;
       }
       
@@ -126,7 +142,19 @@ export class ProductController {
       const products = xmlProducts.map(xmlProduct => 
         XmlProductService.convertXmlProductToAppProduct(xmlProduct)
       );
-      
+      // XML sonucunda da stok kodu eşleşmesi ek filtre
+      if (products.length === 0) {
+        const all = await this.getAllProducts();
+        const q = trimmedQuery.toLowerCase();
+        const skuFiltered = all.filter(p => {
+          const inExternalId = p.externalId?.toLowerCase().includes(q);
+          const inVariationsSku = Array.isArray(p.variations)
+            ? p.variations.some(v => Array.isArray(v.options) && v.options.some(opt => (opt.sku || '').toLowerCase().includes(q)))
+            : false;
+          return inExternalId || inVariationsSku;
+        });
+        return skuFiltered;
+      }
       return products;
     } catch (error) {
       console.error(`❌ ProductController - searchProducts error for query "${query}":`, error);

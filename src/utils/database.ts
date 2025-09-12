@@ -7,22 +7,22 @@ type NoopResult = { changes?: number; lastInsertRowid?: number } | any[] | any |
 
 const noopDb = {
   runAsync: async (_sql: string, _params: any[] = []): Promise<NoopResult> => {
-    console.warn('Database disabled (SQLite kaldırıldı) - runAsync noop çalıştı');
+    // Database disabled - silent operation
     return { changes: 0, lastInsertRowid: 0 };
   },
   getAllAsync: async (_sql: string, _params: any[] = []): Promise<any[]> => {
-    console.warn('Database disabled (SQLite kaldırıldı) - getAllAsync boş dizi döndü');
+    // Database disabled - returning empty array
     return [];
   },
   getFirstAsync: async (_sql: string, _params: any[] = []): Promise<any | null> => {
-    console.warn('Database disabled (SQLite kaldırıldı) - getFirstAsync null döndü');
+    // Database disabled - returning null
     return null;
   },
   execAsync: async (_sql: string): Promise<void> => {
-    console.warn('Database disabled (SQLite kaldırıldı) - execAsync noop');
+    // noop
   },
   execSync: (_sql: string): void => {
-    console.warn('Database disabled (SQLite kaldırıldı) - execSync noop');
+    // noop
   },
   closeSync: (): void => {
     // noop
@@ -50,7 +50,6 @@ async function readQueue(): Promise<OfflineQueueItem[]> {
     const items = JSON.parse(raw) as OfflineQueueItem[];
     return Array.isArray(items) ? items : [];
   } catch (e) {
-    console.warn('Offline queue read error:', e);
     return [];
   }
 }
@@ -59,7 +58,7 @@ async function writeQueue(items: OfflineQueueItem[]): Promise<void> {
   try {
     await AsyncStorageLib.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(items));
   } catch (e) {
-    console.warn('Offline queue write error:', e);
+    // Silent error handling
   }
 }
 
@@ -74,7 +73,7 @@ export const addToOfflineQueue = async (endpoint: string, method: string, body?:
   };
   const updated = [...list, newItem];
   await writeQueue(updated);
-  console.log('📱 Added to offline queue (AsyncStorage):', endpoint, method);
+  // Added to offline queue
 };
 
 export const getOfflineQueue = async (): Promise<OfflineQueueItem[]> => {
@@ -87,5 +86,5 @@ export const removeFromOfflineQueue = async (id: number): Promise<void> => {
   const list = await readQueue();
   const updated = list.filter(item => item.id !== id);
   await writeQueue(updated);
-  console.log('📱 Removed from offline queue (AsyncStorage):', id);
+  // Removed from offline queue
 };

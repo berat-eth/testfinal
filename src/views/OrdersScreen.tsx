@@ -7,10 +7,9 @@ import {
   SafeAreaView,
   TouchableOpacity,
   RefreshControl,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { OrderController } from '../controllers/OrderController';
 import { UserController } from '../controllers/UserController';
 import { Order } from '../utils/types';
@@ -117,23 +116,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({ navigation }) => {
     });
   }, []);
 
-  const renderHeader = useCallback(() => (
-    <LinearGradient
-      colors={['#1A1A2E', '#16213E']}
-      style={styles.headerGradient}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Siparişlerim</Text>
-        <View style={styles.headerButton} />
-      </View>
-    </LinearGradient>
-  ), [navigation]);
+  // İç başlık kaldırıldı; üst başlık navigator tarafından yönetiliyor
 
   const renderOrderItem = useCallback(({ item }: { item: Order }) => (
     <TouchableOpacity
@@ -203,7 +186,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({ navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#1A1A2E" />
+        <StatusBar style="light" />
         <LoadingIndicator />
       </SafeAreaView>
     );
@@ -211,8 +194,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1A1A2E" />
-      {renderHeader()}
+      <StatusBar style="light" />
       
       {orders.length === 0 ? (
         renderEmptyState()

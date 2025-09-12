@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { BackendErrorModal } from '../components/BackendErrorModal';
 
 interface BackendErrorContextType {
@@ -33,12 +34,14 @@ export const BackendErrorProvider: React.FC<BackendErrorProviderProps> = ({
 
   const handleRedirect = useCallback(() => {
     hideBackendError();
-    // Navigate to WebView with hugluoutdoor.com
-    navigation.navigate('WebView', {
-      url: 'https://hugluoutdoor.com',
-      title: 'Huglu Outdoor'
-    });
-  }, [navigation, hideBackendError]);
+    // Web sitesine yönlendirme kaldırıldı
+    // Kullanıcıya bilgi mesajı göster
+    Alert.alert(
+      'Bilgi',
+      'Lütfen daha sonra tekrar deneyiniz.',
+      [{ text: 'Tamam' }]
+    );
+  }, [hideBackendError]);
 
   const handleRetry = useCallback(() => {
     if (retryCallback) {
@@ -106,10 +109,7 @@ export class BackendErrorService {
     this.consecutiveErrors++;
     this.lastErrorTime = now;
     
-    console.warn(`🔥 Backend error #${this.consecutiveErrors}`, {
-      threshold: this.ERROR_THRESHOLD,
-      willShowModal: this.consecutiveErrors >= this.ERROR_THRESHOLD
-    });
+    // Backend error logged silently
     
     // Show error modal only after threshold is reached
     if (this.consecutiveErrors >= this.ERROR_THRESHOLD) {
