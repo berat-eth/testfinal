@@ -680,7 +680,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
           <FlatList
             data={filteredProducts}
             renderItem={renderProduct}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             numColumns={viewMode === 'grid' ? 2 : 1}
             key={viewMode}
             contentContainerStyle={[
@@ -699,10 +699,10 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
             ListEmptyComponent={renderEmptyState}
             ListFooterComponent={renderFooter}
             removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={50}
-            initialNumToRender={20}
-            windowSize={10}
+            maxToRenderPerBatch={20}
+            updateCellsBatchingPeriod={100}
+            initialNumToRender={50}
+            windowSize={15}
             getItemLayout={viewMode === 'grid' ? undefined : (data, index) => ({
               length: 120,
               offset: 120 * index,

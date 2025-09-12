@@ -677,6 +677,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         keyExtractor={(item) => `popular-${item.id}-${popularProductsCounter}`}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.productList}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={6}
+        initialNumToRender={6}
+        windowSize={10}
       />
     </View>
   );
@@ -699,6 +703,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         keyExtractor={(item) => `new-${item.id}`}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.productList}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={6}
+        initialNumToRender={6}
+        windowSize={10}
       />
     </View>
   );
