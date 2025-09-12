@@ -151,14 +151,11 @@ function getLocalIPAddress() {
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(hpp());
 
-const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+// CORS - Tüm origin'lere izin ver
 app.use(cors({
-  origin(origin, cb) {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error('Not allowed by CORS'));
-  },
+  origin: true, // Tüm origin'lere izin ver
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','PATCH'],
+  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization','X-Requested-With','X-API-Key','X-Admin-Key']
 }));
 

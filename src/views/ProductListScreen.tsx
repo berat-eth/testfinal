@@ -29,6 +29,10 @@ import { FilterModal } from '../components/FilterModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SearchBar } from '../components/SearchBar';
 import { CampaignController, Campaign } from '../controllers/CampaignController';
+import { ProductListHeader } from '../components/ProductListHeader';
+import { CategoriesSection } from '../components/CategoriesSection';
+import { ProductListControls } from '../components/ProductListControls';
+import { FlashDealsHeader } from '../components/FlashDealsHeader';
 
 interface ProductListScreenProps {
   navigation: any;
@@ -176,25 +180,18 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const renderFlashHeader = () => {
-    const ends = (campaigns || [])
-      .filter(isFlashCampaign)
+  const getFlashHeaderData = () => {
+    const flashCampaigns = (campaigns || []).filter(isFlashCampaign);
+    const ends = flashCampaigns
       .map(c => new Date(c.endDate as string).getTime())
       .sort((a, b) => a - b);
     const soonestEnd = ends[0];
     const remainSec = soonestEnd ? Math.max(0, Math.floor((soonestEnd - nowTs) / 1000)) : 0;
-    return (
-      <View style={styles.flashHeader}>
-        <View style={styles.flashTitleWrap}>
-          <Icon name="flash-on" size={18} color={Colors.secondary} />
-          <Text style={styles.flashTitle}>Flash İndirimler</Text>
-        </View>
-        <View style={styles.flashTimer}>
-          <Icon name="timer" size={14} color={Colors.primary} />
-          <Text style={styles.flashTimerText}>Bitiş: {formatHMS(remainSec)}</Text>
-        </View>
-      </View>
-    );
+    
+    return {
+      remainingTime: remainSec,
+      campaignCount: flashCampaigns.length,
+    };
   };
 
   const onRefresh = async () => {
@@ -343,206 +340,33 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     }
   };
 
-  const renderHeader = () => (
-    <LinearGradient
-      colors={[Colors.primary, Colors.primaryDark]}
-      style={styles.headerGradient}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color={Colors.textOnPrimary} />
-        </TouchableOpacity>
-        
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Tüm Ürünler</Text>
-          <Text style={styles.headerSubtitle}>{totalProducts} ürün mevcut</Text>
-        </View>
+  const handleSearchSubmit = () => {
+    // Filtreler otomatik tetikleniyor
+  };
 
-        <TouchableOpacity onPress={() => setFilterModalVisible(true)} style={styles.filterButton}>
-          <Icon name="tune" size={24} color={Colors.textOnPrimary} />
-          {(filters.brands.length > 0 || filters.inStock) && (
-            <View style={styles.filterBadge} />
-          )}
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.searchContainer}>
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Ürün ara..."
-          onSubmit={() => { /* filtreler otomatik tetikleniyor */ }}
-        />
-      </View>
-    </LinearGradient>
-  );
+  const hasActiveFilters = filters.brands.length > 0 || filters.inStock;
 
-  const renderCategories = () => (
-    <View style={styles.categoriesSection}>
-      <View style={styles.categoriesHeader}>
-        <View style={styles.categoriesTitleRow}>
-          <View style={styles.categoriesTitleContainer}>
-            <Image 
-              source={require('../../assets/categories-icon.png')} 
-              style={styles.categoriesIcon}
-              resizeMode="contain"
-            />
-            <Text style={styles.categoriesTitle}>Kategoriler</Text>
-          </View>
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('AllCategories')}
-            style={styles.seeAllButton}
-          >
-            <Text style={styles.seeAllText}>Tümü</Text>
-            <Icon name="chevron-right" size={16} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-      </View>
-      
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesContainer}
-        style={styles.categoriesScrollView}
-      >
-        <TouchableOpacity
-          style={[
-            styles.categoryChip,
-            !selectedCategory && styles.categoryChipActive,
-          ]}
-          onPress={() => setSelectedCategory(null)}
-        >
-          <View style={[
-            styles.categoryChipContent,
-            !selectedCategory && styles.categoryChipContentActive
-          ]}>
-            <Icon 
-              name="apps" 
-              size={18} 
-              color={!selectedCategory ? Colors.textOnPrimary : Colors.text} 
-            />
-            <Text
-              style={[
-                styles.categoryChipText,
-                !selectedCategory && styles.categoryChipTextActive,
-              ]}
-            >
-              Tümü
-            </Text>
-          </View>
-        </TouchableOpacity>
-        {(categories || []).map((category, index) => (
-          <TouchableOpacity
-            key={category}
-            style={[
-              styles.categoryChip,
-              selectedCategory === category && styles.categoryChipActive,
-            ]}
-            onPress={() => setSelectedCategory(category)}
-          >
-            <View style={[
-              styles.categoryChipContent,
-              selectedCategory === category && styles.categoryChipContentActive
-            ]}>
-              {getCategoryIcon(category) ? (
-                <Image
-                  source={getCategoryIcon(category)}
-                  style={[
-                    styles.categoryChipIcon,
-                    { tintColor: selectedCategory === category ? Colors.textOnPrimary : Colors.text }
-                  ]}
-                  resizeMode="contain"
-                />
-              ) : (
-                <Icon 
-                  name="category" 
-                  size={18} 
-                  color={selectedCategory === category ? Colors.textOnPrimary : Colors.text} 
-                />
-              )}
-              <Text
-                style={[
-                  styles.categoryChipText,
-                  selectedCategory === category && styles.categoryChipTextActive,
-                ]}
-              >
-                {category}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
+  const handleCategorySelect = (category: string | null) => {
+    setSelectedCategory(category);
+  };
 
-  const renderSortAndView = () => (
-    <View style={styles.sortViewContainer}>
-      <View style={styles.resultInfo}>
-        <View style={styles.resultCount}>
-          <Text style={styles.resultCountText}>
-            {showFlashDeals ? getFlashDealProducts().length : filteredProducts.length} / {totalProducts} ürün
-          </Text>
-          <View style={styles.resultBadge}>
-            <Text style={styles.resultBadgeText}>
-              {showFlashDeals ? 'Flash İndirimler' : 'Tüm Ürünler'}
-            </Text>
-          </View>
-        </View>
-      </View>
-      
-      <View style={styles.controlsRow}>
-        <TouchableOpacity
-          style={[styles.toggleButton, showFlashDeals && styles.toggleButtonActive]}
-          onPress={() => setShowFlashDeals(!showFlashDeals)}
-        >
-          <Icon name="flash-on" size={16} color={showFlashDeals ? Colors.textOnPrimary : Colors.text} />
-          <Text style={[styles.toggleButtonText, showFlashDeals && styles.toggleButtonTextActive]}>
-            {showFlashDeals ? 'Tümü' : 'Flash'}
-          </Text>
-        </TouchableOpacity>
+  const handleAllCategoriesPress = () => {
+    navigation.navigate('AllCategories');
+  };
 
-        <TouchableOpacity
-          style={styles.sortButton}
-          onPress={() => {
+  const handleFlashToggle = () => {
+    setShowFlashDeals(!showFlashDeals);
+  };
+
+  const handleSortPress = () => {
             const options = ['name', 'price-asc', 'price-desc', 'rating'] as const;
             const currentIndex = options.indexOf(sortBy);
             setSortBy(options[(currentIndex + 1) % options.length]);
-          }}
-        >
-          <Icon name="sort" size={18} color={Colors.text} />
-          <Text style={styles.sortButtonText}>
-            {sortBy === 'name' && 'İsim'}
-            {sortBy === 'price-asc' && 'Fiyat ↑'}
-            {sortBy === 'price-desc' && 'Fiyat ↓'}
-            {sortBy === 'rating' && 'Puan'}
-          </Text>
-        </TouchableOpacity>
+  };
 
-        <View style={styles.viewModeContainer}>
-          <TouchableOpacity
-            style={[styles.viewModeButton, viewMode === 'grid' && styles.viewModeButtonActive]}
-            onPress={() => setViewMode('grid')}
-          >
-            <Icon
-              name="grid-view"
-              size={18}
-              color={viewMode === 'grid' ? Colors.primary : Colors.textLight}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
-            onPress={() => setViewMode('list')}
-          >
-            <Icon
-              name="view-list"
-              size={18}
-              color={viewMode === 'list' ? Colors.primary : Colors.textLight}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
+  const handleViewModeChange = (mode: 'grid' | 'list') => {
+    setViewMode(mode);
+  };
 
 
 
@@ -664,10 +488,43 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       
-      {renderHeader()}
-      {renderCategories()}
-      {renderSortAndView()}
-      {showFlashDeals && renderFlashHeader()}
+      <ProductListHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSearchSubmit={handleSearchSubmit}
+        onFilterPress={() => setFilterModalVisible(true)}
+        hasActiveFilters={hasActiveFilters}
+      />
+      
+      <CategoriesSection
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategorySelect={handleCategorySelect}
+        onAllCategoriesPress={handleAllCategoriesPress}
+        showFlashDeals={showFlashDeals}
+        onFlashToggle={handleFlashToggle}
+        getCategoryIcon={getCategoryIcon}
+      />
+      
+      <ProductListControls
+        filteredCount={showFlashDeals ? getFlashDealProducts().length : filteredProducts.length}
+        totalCount={totalProducts}
+        showFlashDeals={showFlashDeals}
+        sortBy={sortBy}
+        viewMode={viewMode}
+        onSortPress={handleSortPress}
+        onViewModeChange={handleViewModeChange}
+      />
+      
+      {showFlashDeals && (() => {
+        const flashData = getFlashHeaderData();
+        return (
+          <FlashDealsHeader
+            remainingTime={flashData.remainingTime}
+            campaignCount={flashData.campaignCount}
+          />
+        );
+      })()}
       <FlatList
         data={showFlashDeals ? getFlashDealProducts() : filteredProducts}
         renderItem={renderProduct}
@@ -738,39 +595,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  headerGradient: {
-    paddingTop: 50,
-    paddingBottom: Spacing.sm,
-  },
-  header: {
+  searchContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-  },
-  headerTitleContainer: {
-    flex: 1,
-    alignItems: 'center',
-    marginHorizontal: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.textOnPrimary,
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: Colors.textOnPrimary,
-    opacity: 0.8,
-    marginTop: 2,
-  },
-  searchContainer: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
-  },
-  backButton: {
-    padding: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.md,
+    marginHorizontal: Spacing.sm,
+    height: 38,
   },
   searchIcon: {
     marginRight: Spacing.sm,
@@ -795,39 +628,58 @@ const styles = StyleSheet.create({
   },
   categoriesSection: {
     backgroundColor: Colors.background,
-    marginBottom: Spacing.sm,
-    paddingTop: Spacing.sm,
+    marginBottom: 0,
+  },
+  categoriesGradient: {
+    paddingVertical: 0,
   },
   categoriesHeader: {
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-  },
-  categoriesTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    marginBottom: 0,
   },
   categoriesTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
-  categoriesIcon: {
-    width: 20,
-    height: 20,
-    tintColor: Colors.primary,
-    marginRight: Spacing.sm,
-  },
-  categoriesScrollView: {
-    paddingLeft: Spacing.lg,
-  },
-  categoriesTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  seeAllButton: {
+  categoriesActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  categoriesTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+    marginLeft: Spacing.sm,
+  },
+  flashButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: Colors.background,
+    marginRight: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  flashButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  flashButtonText: {
+    fontSize: 13,
+    color: Colors.primary,
+    marginLeft: 6,
+    fontWeight: '600',
+  },
+  flashButtonTextActive: {
+    color: Colors.textOnPrimary,
+  },
+  seeAllButton: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
   },
@@ -835,127 +687,98 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.primary,
     fontWeight: '600',
-    marginRight: 4,
   },
   categoriesContainer: {
     paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
   },
   categoryChip: {
-    marginRight: Spacing.sm,
+    marginRight: Spacing.md,
     borderRadius: 25,
     overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...Shadows.small,
   },
   categoryChipActive: {
-    elevation: 4,
-    shadowOpacity: 0.2,
+    ...Shadows.medium,
   },
-  categoryChipContent: {
+  categoryChipGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    backgroundColor: Colors.surface,
     borderRadius: 25,
+    backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    minWidth: 80,
-    justifyContent: 'center',
-  },
-  categoryChipContentActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
   },
   categoryChipIcon: {
-    width: 18,
-    height: 18,
-    marginRight: Spacing.xs,
+    width: 16,
+    height: 16,
   },
   categoryChipText: {
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.text,
     fontWeight: '600',
+    marginLeft: Spacing.sm,
   },
   categoryChipTextActive: {
     color: Colors.textOnPrimary,
     fontWeight: '700',
   },
   sortViewContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
     backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  resultInfo: {
-    marginBottom: Spacing.sm,
-  },
   resultCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  resultBadge: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  resultBadgeText: {
-    color: Colors.textOnPrimary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  controlsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flex: 1,
   },
   resultCountText: {
-    fontSize: 16,
-    color: Colors.text,
+    fontSize: 14,
+    color: Colors.textLight,
     fontWeight: '600',
+  },
+  totalCountText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  sortViewButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: 8,
     backgroundColor: Colors.background,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
     marginRight: Spacing.sm,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   sortButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.text,
-    marginLeft: Spacing.xs,
-    fontWeight: '600',
+    marginLeft: 6,
+    fontWeight: '500',
   },
   viewModeContainer: {
     flexDirection: 'row',
     backgroundColor: Colors.background,
-    borderRadius: 20,
+    borderRadius: 8,
     padding: 2,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   viewModeButton: {
-    padding: Spacing.sm,
-    borderRadius: 18,
+    padding: 6,
+    borderRadius: 6,
   },
   viewModeButtonActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.surface,
   },
   productList: {
     padding: Spacing.md,
@@ -1004,30 +827,23 @@ const styles = StyleSheet.create({
   toggleButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: 8,
     backgroundColor: Colors.background,
-    borderRadius: 20,
+    marginRight: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginRight: Spacing.sm,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   toggleButtonActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
-    elevation: 2,
-    shadowOpacity: 0.2,
   },
   toggleButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.text,
-    marginLeft: Spacing.xs,
-    fontWeight: '600',
+    marginLeft: 6,
+    fontWeight: '500',
   },
   toggleButtonTextActive: {
     color: Colors.textOnPrimary,

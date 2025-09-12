@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
-  Image,} from 'react-native';
+  Image,
+  StatusBar,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Colors } from '../theme/colors';
 import { Spacing, Shadows } from '../theme/theme';

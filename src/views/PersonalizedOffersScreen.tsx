@@ -264,14 +264,14 @@ const getOfferColor = (type: string): string => {
 
 const getOfferIcon = (type: string): string => {
   const icons: Record<string, string> = {
-    discount: 'pricetag',
-    free_shipping: 'car',
-    bundle: 'cube',
+    discount: 'local-offer',
+    free_shipping: 'local-shipping',
+    bundle: 'inventory',
     loyalty: 'star',
-    seasonal: 'leaf',
-    birthday: 'gift',
+    seasonal: 'eco',
+    birthday: 'cake',
   };
-  return icons[type] || 'gift';
+  return icons[type] || 'card-giftcard';
 };
 
 const styles = StyleSheet.create({

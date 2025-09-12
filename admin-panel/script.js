@@ -1,7 +1,7 @@
 // Admin Panel JavaScript
 
 // Configuration - Updated for Remote Server
-const API_BASE = 'http://213.142.159.135:3000/api';
+const API_BASE = 'https://zerodaysoftware.tr/api';
 // Güvenlik: Hardcoded admin anahtarı kaldırıldı. Geçici olarak localStorage üzerinden okunur.
 const ADMIN_KEY = (function() {
     try {

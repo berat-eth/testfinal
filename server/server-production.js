@@ -215,9 +215,9 @@ app.use('/api/', limiter);
 // Compression middleware
 app.use(compression());
 
-// CORS configuration
+// CORS configuration - Tüm origin'lere izin ver
 const corsOptions = {
-  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : '*',
+  origin: true, // Tüm origin'lere izin ver
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Admin-Key'],
   credentials: true
