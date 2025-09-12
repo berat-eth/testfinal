@@ -9,7 +9,7 @@ export interface ApiConfig {
 // Environment-based API configurations
 export const API_CONFIGS: Record<string, ApiConfig> = {
   development: {
-    baseUrl: 'http://localhost:3000/api',
+    baseUrl: 'http://213.142.159.135:3000/api',
     timeout: 30000,
     retryAttempts: 2,
     environment: 'development'
