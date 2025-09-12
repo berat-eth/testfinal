@@ -6,7 +6,6 @@ import {
   SafeAreaView,
   FlatList,
   TouchableOpacity,
-  ScrollView,
   Dimensions,
   RefreshControl,
   TextInput,
@@ -58,9 +57,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
   });
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [nowTs, setNowTs] = useState<number>(Date.now());
-  const pagerRef = useRef<ScrollView>(null);
-  const [currentPage, setCurrentPage] = useState<number>(0);
-  const [pagerEnabled, setPagerEnabled] = useState<boolean>(true);
   const nowIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Pagination state
@@ -320,71 +316,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
     </View>
   );
 
-  const renderTopTabs = () => (
-    <View style={styles.topTabsWrap}>
-      <TouchableOpacity
-        style={[styles.topTabButton, currentPage === 0 && styles.topTabActive]}
-        onPress={() => pagerRef.current?.scrollTo({ x: 0, animated: true })}
-      >
-        <Text style={[styles.topTabText, currentPage === 0 && styles.topTabTextActive]}>Tümü</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.topTabButton, currentPage === 1 && styles.topTabActive]}
-        onPress={() => pagerRef.current?.scrollTo({ x: width, animated: true })}
-      >
-        <Text style={[styles.topTabText, currentPage === 1 && styles.topTabTextActive]}>Flash İndirimler</Text>
-      </TouchableOpacity>
-    </View>
-  );
 
-  const isFlashCampaign = (c: Campaign) => {
-    if (!c.isActive || c.status !== 'active' || !c.endDate) return false;
-    const end = new Date(c.endDate).getTime();
-    const remainMs = end - nowTs;
-    return remainMs > 0 && remainMs <= 7 * 24 * 60 * 60 * 1000; // 1 hafta
-  };
-
-  const getFlashDealProducts = (): Product[] => {
-    const flashCamps = (campaigns || []).filter(isFlashCampaign);
-    const productIds = new Set<number>();
-    for (const c of flashCamps) {
-      if (Array.isArray(c.applicableProducts) && c.applicableProducts.length > 0) {
-        c.applicableProducts.forEach(id => productIds.add(Number(id)));
-      }
-    }
-    if (productIds.size === 0) return [];
-    const pool = selectedCategory ? products : (filteredProducts.length ? filteredProducts : products);
-    return pool.filter(p => productIds.has(p.id));
-  };
-
-  const formatHMS = (totalSeconds: number) => {
-    const sec = Math.max(0, totalSeconds);
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const renderFlashHeader = () => {
-    const ends = (campaigns || [])
-      .filter(isFlashCampaign)
-      .map(c => new Date(c.endDate as string).getTime())
-      .sort((a, b) => a - b);
-    const soonestEnd = ends[0];
-    const remainSec = soonestEnd ? Math.max(0, Math.floor((soonestEnd - nowTs) / 1000)) : 0;
-    return (
-      <View style={styles.flashHeader}>
-        <View style={styles.flashTitleWrap}>
-          <Icon name="flash-on" size={18} color={Colors.secondary} />
-          <Text style={styles.flashTitle}>Flash İndirimler</Text>
-        </View>
-        <View style={styles.flashTimer}>
-          <Icon name="timer" size={14} color={Colors.primary} />
-          <Text style={styles.flashTimerText}>Bitiş: {formatHMS(remainSec)}</Text>
-        </View>
-      </View>
-    );
-  };
 
   const renderCategories = () => (
     <View style={styles.categoriesSection}>
@@ -662,86 +594,40 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
       <StatusBar style="dark" />
       
       {renderHeader()}
-      {renderTopTabs()}
-      <ScrollView
-        ref={pagerRef}
-        horizontal
-        pagingEnabled
-        scrollEnabled={pagerEnabled}
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={(e) => {
-          const page = Math.round(e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width);
-          setCurrentPage(page);
-        }}
-      >
-        <View style={{ width: width }}>
-          {renderCategories()}
-          {renderSortAndView()}
-          <FlatList
-            data={filteredProducts}
-            renderItem={renderProduct}
-            keyExtractor={(item, index) => `${item.id}-${index}`}
-            numColumns={viewMode === 'grid' ? 2 : 1}
-            key={viewMode}
-            contentContainerStyle={[
-              styles.productList,
-              filteredProducts.length === 0 && styles.emptyList,
-            ]}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={[Colors.primary]}
-                tintColor={Colors.primary}
-              />
-            }
-            ListEmptyComponent={renderEmptyState}
-            ListFooterComponent={renderFooter}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={20}
-            updateCellsBatchingPeriod={100}
-            initialNumToRender={50}
-            windowSize={15}
-            getItemLayout={viewMode === 'grid' ? undefined : (data, index) => ({
-              length: 120,
-              offset: 120 * index,
-              index,
-            })}
+      {renderCategories()}
+      {renderSortAndView()}
+      <FlatList
+        data={filteredProducts}
+        renderItem={renderProduct}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        numColumns={viewMode === 'grid' ? 2 : 1}
+        key={viewMode}
+        contentContainerStyle={[
+          styles.productList,
+          filteredProducts.length === 0 && styles.emptyList,
+        ]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.primary]}
+            tintColor={Colors.primary}
           />
-        </View>
-        <View style={{ width: width }}>
-          {renderFlashHeader()}
-          <FlatList
-            data={getFlashDealProducts()}
-            renderItem={renderProduct}
-            keyExtractor={(item) => `flash-${item.id}`}
-            numColumns={viewMode === 'grid' ? 2 : 1}
-            key={`flash-${viewMode}`}
-            contentContainerStyle={[
-              styles.productList,
-              getFlashDealProducts().length === 0 && styles.emptyList,
-            ]}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={() => (
-              <View style={styles.emptyState}>
-                <Icon name="bolt" size={64} color={Colors.textMuted} />
-                <Text style={styles.emptyStateTitle}>Şu an flash indirim yok</Text>
-                <Text style={styles.emptyStateText}>Kısa süre sonra tekrar kontrol edin</Text>
-              </View>
-            )}
-          />
-        </View>
-      </ScrollView>
-
-      <View style={styles.tabIndicatorWrap}>
-        <TouchableOpacity style={[styles.tabIndicator, currentPage === 0 && styles.tabActive]} onPress={() => pagerRef.current?.scrollTo({ x: 0, animated: true })}>
-          <Text style={[styles.tabIndicatorText, currentPage === 0 && styles.tabIndicatorTextActive]}>Tümü</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tabIndicator, currentPage === 1 && styles.tabActive]} onPress={() => pagerRef.current?.scrollTo({ x: width, animated: true })}>
-          <Text style={[styles.tabIndicatorText, currentPage === 1 && styles.tabIndicatorTextActive]}>Flash</Text>
-        </TouchableOpacity>
-      </View>
+        }
+        ListEmptyComponent={renderEmptyState}
+        ListFooterComponent={renderFooter}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={20}
+        updateCellsBatchingPeriod={100}
+        initialNumToRender={50}
+        windowSize={15}
+        getItemLayout={viewMode === 'grid' ? undefined : (data, index) => ({
+          length: 120,
+          offset: 120 * index,
+          index,
+        })}
+      />
 
       {filterModalVisible && (
         <FilterModal
@@ -980,92 +866,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textMuted,
     fontStyle: 'italic',
-  },
-  topTabsWrap: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  topTabButton: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 10,
-    marginHorizontal: 4,
-    backgroundColor: Colors.background,
-  },
-  topTabActive: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  topTabText: {
-    color: Colors.textLight,
-    fontWeight: '600',
-  },
-  topTabTextActive: {
-    color: Colors.primary,
-  },
-  flashHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  flashTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  flashTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-    marginLeft: 8,
-  },
-  flashTimer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  flashTimerText: {
-    marginLeft: 6,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  tabIndicatorWrap: {
-    position: 'absolute',
-    bottom: 16,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    ...Shadows.small,
-  },
-  tabIndicator: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  tabActive: {
-    backgroundColor: Colors.background,
-  },
-  tabIndicatorText: {
-    color: Colors.textLight,
-    fontWeight: '600',
-  },
-  tabIndicatorTextActive: {
-    color: Colors.primary,
   },
 });
