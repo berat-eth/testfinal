@@ -46,7 +46,8 @@
     "plugins": [
       "expo-location",
       "expo-local-authentication",
-      "expo-image-picker"
+      "expo-image-picker",
+      "expo-secure-store"
     ]
   }
 }
