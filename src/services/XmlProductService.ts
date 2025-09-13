@@ -230,6 +230,7 @@ export class XmlProductService {
       price: price,
       category: categoryTree.mainCategory,
       image: xmlProduct.Resimler?.[0] || '',
+      images: xmlProduct.Resimler || [],
       stock: xmlProduct.UrunSecenek?.Secenek?.reduce((total, secenek) => 
         total + (parseInt(secenek.StokAdedi) || 0), 0) || 0,
       brand: xmlProduct.Marka,

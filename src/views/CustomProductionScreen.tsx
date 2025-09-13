@@ -77,6 +77,40 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
   const [logoScale, setLogoScale] = useState<number>(1);
   const [logoWidth, setLogoWidth] = useState<number>(5); // cm
   const [logoHeight, setLogoHeight] = useState<number>(5); // cm
+  const [selectedImageIndices, setSelectedImageIndices] = useState<{ [productId: number]: number }>({});
+  
+  // Ürün görsellerini al
+  const getProductImages = (product: Product) => {
+    const images = [];
+    if (product.image) {
+      images.push(product.image);
+    }
+    if (product.images && Array.isArray(product.images)) {
+      images.push(...product.images);
+    }
+    return images;
+  };
+
+  // Görsel değiştirme
+  const handleImageChange = (productId: number, direction: 'next' | 'prev') => {
+    setSelectedImageIndices(prev => {
+      const currentIndex = prev[productId] || 0;
+      const product = products.find(p => p.id === productId);
+      if (!product) return prev;
+      
+      const images = getProductImages(product);
+      if (images.length <= 1) return prev;
+      
+      let newIndex = currentIndex;
+      if (direction === 'next') {
+        newIndex = (currentIndex + 1) % images.length;
+      } else {
+        newIndex = currentIndex === 0 ? images.length - 1 : currentIndex - 1;
+      }
+      
+      return { ...prev, [productId]: newIndex };
+    });
+  };
   
   // Benden form state'leri
   const [showBendenForm, setShowBendenForm] = useState(false);
@@ -99,7 +133,6 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
     const loadProducts = async () => {
       try {
         setLoading(true);
-        console.log('🔄 Starting product loading...');
         
         // Minimum loading time to show loading indicator
         const minLoadingTime = new Promise(resolve => setTimeout(resolve, 1000));
@@ -485,29 +518,64 @@ export const CustomProductionScreen: React.FC<CustomProductionScreenProps> = ({ 
     }
   };
 
-  const renderProductCard = ({ item }: { item: Product }) => (
-    <TouchableOpacity onPress={() => handleProductSelect(item)}>
-      <ModernCard style={styles.productCard}>
-        <Image
-          source={{ uri: item.image }}
-          style={styles.productImage}
-          resizeMode="cover"
-        />
-        <View style={styles.productInfo}>
-          <Text style={styles.productName} numberOfLines={2}>
-            {item.name}
-          </Text>
-          <Text style={styles.productPrice}>
-            {ProductController.formatPrice(item.price)}
-          </Text>
-          <Text style={styles.productCategory}>{item.category}</Text>
-        </View>
-        <TouchableOpacity style={styles.addButton}>
-          <Icon name="add" size={20} color={Colors.primary} />
-        </TouchableOpacity>
-      </ModernCard>
-    </TouchableOpacity>
-  );
+  const renderProductCard = ({ item }: { item: Product }) => {
+    const productImages = getProductImages(item);
+    const selectedImageIndex = selectedImageIndices[item.id] || 0;
+    
+    return (
+      <TouchableOpacity onPress={() => handleProductSelect(item)}>
+        <ModernCard style={styles.productCard}>
+          <View style={styles.productImageContainer}>
+            <Image
+              source={{ uri: productImages[selectedImageIndex] || item.image || 'https://via.placeholder.com/300x300?text=No+Image' }}
+              style={styles.productImage}
+              resizeMode="cover"
+            />
+            
+            {/* Çoklu görsel göstergesi */}
+            {productImages.length > 1 && (
+              <View style={styles.imageIndicator}>
+                <Text style={styles.imageIndicatorText}>
+                  {selectedImageIndex + 1} / {productImages.length}
+                </Text>
+              </View>
+            )}
+            
+            {/* Görsel değiştirme butonları */}
+            {productImages.length > 1 && (
+              <>
+                <TouchableOpacity 
+                  style={[styles.imageNavButton, styles.imageNavButtonLeft]}
+                  onPress={() => handleImageChange(item.id, 'prev')}
+                >
+                  <Icon name="chevron-left" size={16} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.imageNavButton, styles.imageNavButtonRight]}
+                  onPress={() => handleImageChange(item.id, 'next')}
+                >
+                  <Icon name="chevron-right" size={16} color="white" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+          
+          <View style={styles.productInfo}>
+            <Text style={styles.productName} numberOfLines={2}>
+              {item.name}
+            </Text>
+            <Text style={styles.productPrice}>
+              {ProductController.formatPrice(item.price)}
+            </Text>
+            <Text style={styles.productCategory}>{item.category}</Text>
+          </View>
+          <TouchableOpacity style={styles.addButton}>
+            <Icon name="add" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+        </ModernCard>
+      </TouchableOpacity>
+    );
+  };
 
   const renderSelectedProduct = (item: SelectedProduct, index: number) => (
     <ModernCard key={`selected-${item.product.id}-${index}`} style={styles.selectedProductCard}>
@@ -2170,5 +2238,40 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  // Çoklu görsel stilleri
+  productImageContainer: {
+    position: 'relative',
+  },
+  imageIndicator: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  imageIndicatorText: {
+    fontSize: 10,
+    color: 'white',
+    fontWeight: '600',
+  },
+  imageNavButton: {
+    position: 'absolute',
+    top: '50%',
+    transform: [{ translateY: -20 }],
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageNavButtonLeft: {
+    left: Spacing.sm,
+  },
+  imageNavButtonRight: {
+    right: Spacing.sm,
   },
 });

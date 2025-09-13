@@ -634,9 +634,12 @@ const TabNavigator = () => {
 
 const AppNavigatorContent = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const welcomeFadeAnim = useRef(new Animated.Value(0)).current;
+  const welcomeScaleAnim = useRef(new Animated.Value(0.7)).current;
   const navigationRef = useRef<any>(null);
 
   useEffect(() => {
@@ -667,6 +670,24 @@ const AppNavigatorContent = () => {
     // App initialization
     const timer = setTimeout(() => {
       setIsLoading(false);
+      // Splash screen'den sonra welcome popup'ı göster
+      setTimeout(() => {
+        setShowWelcomePopup(true);
+        // Welcome popup animasyonu
+        Animated.parallel([
+          Animated.timing(welcomeFadeAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.spring(welcomeScaleAnim, {
+            toValue: 1,
+            tension: 100,
+            friction: 8,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, 300);
     }, 2200);
 
     return () => clearTimeout(timer);
@@ -718,11 +739,39 @@ const AppNavigatorContent = () => {
           </View>
         </View>
         
+        {/* Copyright Info */}
+        <View style={splashStyles.copyrightContainer}>
+          <Text style={splashStyles.copyrightText}>
+            Huğlu Outdoor bir Huğlu av tüfekleri kooperatifi markasıdır
+          </Text>
+          <Text style={splashStyles.copyrightText}>
+            Tüm hakları saklıdır
+          </Text>
+        </View>
+        
         {/* Version Info */}
         <Text style={splashStyles.versionText}>v2.0.1</Text>
       </View>
     );
   }
+
+  // Welcome popup'ı kapatma fonksiyonu
+  const closeWelcomePopup = () => {
+    Animated.parallel([
+      Animated.timing(welcomeFadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(welcomeScaleAnim, {
+        toValue: 0.7,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowWelcomePopup(false);
+    });
+  };
 
   // Main navigation - simple tab navigator
   return (
@@ -732,6 +781,82 @@ const AppNavigatorContent = () => {
           <TabNavigator />
         </BackendErrorProvider>
       </NavigationContainer>
+      
+      {/* Welcome Popup Modal */}
+      {showWelcomePopup && (
+        <Modal
+          visible={showWelcomePopup}
+          transparent={true}
+          animationType="none"
+          onRequestClose={closeWelcomePopup}
+        >
+          <View style={welcomeStyles.overlay}>
+            <Animated.View style={[
+              welcomeStyles.popupContainer,
+              {
+                opacity: welcomeFadeAnim,
+                transform: [{ scale: welcomeScaleAnim }]
+              }
+            ]}>
+              {/* Background Pattern */}
+              <View style={welcomeStyles.backgroundPattern}>
+                <View style={welcomeStyles.patternCircle1} />
+                <View style={welcomeStyles.patternCircle2} />
+                <View style={welcomeStyles.patternCircle3} />
+              </View>
+              
+              {/* Logo */}
+              <Image 
+                source={require('../../assets/logo.jpg')} 
+                style={welcomeStyles.logo}
+                resizeMode="contain"
+              />
+              
+              {/* Welcome Text */}
+              <Text style={welcomeStyles.welcomeTitle}>
+                Hoş Geldiniz! 🎯
+              </Text>
+              
+              <Text style={welcomeStyles.welcomeSubtitle}>
+                Huğlu Outdoor'a hoş geldiniz
+              </Text>
+              
+              <Text style={welcomeStyles.welcomeDescription}>
+                Av tüfekleri ve outdoor ürünlerinde kalite ve güvenin adresi. 
+                En yeni ürünlerimizi keşfedin ve özel kampanyalarımızdan yararlanın.
+              </Text>
+              
+              {/* Features */}
+              <View style={welcomeStyles.featuresContainer}>
+                <View style={welcomeStyles.featureItem}>
+                  <Text style={welcomeStyles.featureIcon}>🛡️</Text>
+                  <Text style={welcomeStyles.featureText}>Kaliteli Ürünler</Text>
+                </View>
+                <View style={welcomeStyles.featureItem}>
+                  <Text style={welcomeStyles.featureIcon}>🚚</Text>
+                  <Text style={welcomeStyles.featureText}>Hızlı Teslimat</Text>
+                </View>
+                <View style={welcomeStyles.featureItem}>
+                  <Text style={welcomeStyles.featureIcon}>💳</Text>
+                  <Text style={welcomeStyles.featureText}>Güvenli Ödeme</Text>
+                </View>
+              </View>
+              
+              {/* Action Button */}
+              <TouchableOpacity 
+                style={welcomeStyles.continueButton}
+                onPress={closeWelcomePopup}
+                activeOpacity={0.8}
+              >
+                <Text style={welcomeStyles.continueButtonText}>
+                  Keşfetmeye Başla
+                </Text>
+                <Text style={welcomeStyles.continueButtonIcon}>→</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
     </AppProvider>
   );
 };
@@ -815,11 +940,164 @@ const splashStyles = StyleSheet.create({
     backgroundColor: '#FF6B6B',
     borderRadius: 2,
   },
+  copyrightContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  copyrightText: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#6C757D',
+    textAlign: 'center',
+    lineHeight: 16,
+    letterSpacing: 0.3,
+  },
   versionText: {
     fontSize: 12,
     fontWeight: '400',
     color: '#ADB5BD',
     letterSpacing: 0.5,
+  },
+});
+
+// Welcome Popup Styles
+const welcomeStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  popupContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 32,
+    width: '100%',
+    maxWidth: 380,
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 20,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 25,
+    elevation: 25,
+  },
+  backgroundPattern: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  patternCircle1: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(26, 26, 46, 0.03)',
+    top: -30,
+    right: -30,
+  },
+  patternCircle2: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 107, 107, 0.05)',
+    bottom: -20,
+    left: -20,
+  },
+  patternCircle3: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(78, 205, 196, 0.04)',
+    top: '50%',
+    right: 10,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 24,
+  },
+  welcomeTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1A1A2E',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  welcomeSubtitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FF6B6B',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  welcomeDescription: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#6C757D',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+    paddingHorizontal: 8,
+  },
+  featuresContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 32,
+  },
+  featureItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  featureIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  featureText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1A1A2E',
+    textAlign: 'center',
+  },
+  continueButton: {
+    backgroundColor: '#1A1A2E',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    shadowColor: '#1A1A2E',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginRight: 8,
+  },
+  continueButtonIcon: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
   },
 });
 

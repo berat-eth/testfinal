@@ -71,38 +71,31 @@ export class ProductController {
 
   static async getProductById(id: number): Promise<Product | null> {
     try {
-      console.log(`🔄 Fetching product by ID: ${id}`);
       
       // Try API first
       const response = await apiService.getProductById(id);
       if (response.success && response.data) {
-        console.log(`✅ API returned product: ${response.data.name}`);
         const product = this.mapApiProductToAppProduct(response.data);
         
-        // Detaylı ürün görüntüleme logu
-        try {
-          await detailedActivityLogger.logProductDetailViewed({
-            productId: product.id,
-            productName: product.name,
-            productPrice: product.price,
-            productCategory: product.category || 'Bilinmeyen',
-            productBrand: product.brand || 'Bilinmeyen',
-            productImage: product.images?.[0] || '',
-            variations: product.variations ? this.extractVariations(product.variations) : undefined,
-            variationString: product.variationString,
-            discountAmount: product.discountAmount,
-            originalPrice: product.originalPrice,
-            finalPrice: product.finalPrice || product.price
-          });
-        } catch (logError) {
-          console.warn('⚠️ Product detail view logging failed:', logError);
-        }
+        // Detaylı ürün görüntüleme logu - async (non-blocking)
+        detailedActivityLogger.logProductDetailViewed({
+          productId: product.id,
+          productName: product.name,
+          productPrice: product.price,
+          productCategory: product.category || 'Bilinmeyen',
+          productBrand: product.brand || 'Bilinmeyen',
+          productImage: product.images?.[0] || '',
+          variations: product.variations ? this.extractVariationsFromProduct(product.variations) : undefined,
+          variationString: product.variationString,
+          discountAmount: product.discountAmount,
+          originalPrice: product.originalPrice,
+          finalPrice: product.finalPrice || product.price
+        });
         
         return product;
       }
       
       // Fallback to XML service
-      console.log('🔄 API fallback to XML service');
       const xmlProducts = await XmlProductService.fetchProducts();
       const xmlProduct = xmlProducts.find(p => parseInt(p.UrunKartiID) === id);
       
@@ -121,19 +114,16 @@ export class ProductController {
 
   static async getProductsByCategory(category: string): Promise<Product[]> {
     try {
-      console.log(`🔄 Fetching products by category: ${category}`);
       
       // Try API first
       const response = await apiService.getProductsByCategory(category);
       if (response.success && response.data) {
-        console.log(`✅ API returned ${response.data.length} products for category: ${category}`);
         const products = response.data.map((apiProduct: any) => this.mapApiProductToAppProduct(apiProduct));
         
         return products;
       }
       
       // Fallback to XML service
-      console.log('🔄 API fallback to XML service');
       const xmlProducts = await XmlProductService.fetchProductsByCategory(category);
       const products = xmlProducts.map(xmlProduct => 
         XmlProductService.convertXmlProductToAppProduct(xmlProduct)
@@ -155,19 +145,20 @@ export class ProductController {
       }
       
       const trimmedQuery = query.trim();
-      console.log(`🔍 Searching products with query: "${trimmedQuery}"`);
+      // console.log(`🔍 Searching products with query: "${trimmedQuery}"`);
       
       // Try API first
       const response = await apiService.searchProducts(trimmedQuery);
       if (response.success && response.data) {
-        console.log(`✅ API returned ${response.data.length} search results for: "${trimmedQuery}"`);
+        // console.log(`✅ API returned ${response.data.length} search results for: "${trimmedQuery}"`);
         const products = response.data.map((apiProduct: any) => this.mapApiProductToAppProduct(apiProduct));
         
         // Ek: Eğer sonuç yoksa ve sorgu stok kodu/sku'ya benziyorsa, local filtre uygula
         if (products.length === 0) {
           const looksLikeSku = /[a-z0-9\-_/]{3,}/i.test(trimmedQuery);
           if (looksLikeSku) {
-            const all = await this.getAllProducts();
+            const allResult = await this.getAllProducts();
+            const all = allResult.products;
             const q = trimmedQuery.toLowerCase();
             const skuFiltered = all.filter(p => {
               const inExternalId = p.externalId?.toLowerCase().includes(q);
@@ -183,14 +174,15 @@ export class ProductController {
       }
       
       // Fallback to XML service
-      console.log('🔄 API fallback to XML service for search');
+      // console.log('🔄 API fallback to XML service for search');
       const xmlProducts = await XmlProductService.searchProducts(trimmedQuery);
       const products = xmlProducts.map(xmlProduct => 
         XmlProductService.convertXmlProductToAppProduct(xmlProduct)
       );
       // XML sonucunda da stok kodu eşleşmesi ek filtre
       if (products.length === 0) {
-        const all = await this.getAllProducts();
+        const allResult = await this.getAllProducts();
+        const all = allResult.products;
         const q = trimmedQuery.toLowerCase();
         const skuFiltered = all.filter(p => {
           const inExternalId = p.externalId?.toLowerCase().includes(q);
@@ -212,19 +204,20 @@ export class ProductController {
 
   static async filterProducts(filters: FilterOptions): Promise<Product[]> {
     try {
-      console.log('🔍 Filtering products with filters:', filters);
+      // console.log('🔍 Filtering products with filters:', filters);
       
       // Try API first
       const response = await apiService.filterProducts(filters);
       if (response.success && Array.isArray(response.data)) {
-        console.log(`✅ API returned ${response.data.length} filtered products`);
+        // console.log(`✅ API returned ${response.data.length} filtered products`);
         const products = response.data.map((apiProduct: any) => this.mapApiProductToAppProduct(apiProduct));
         return products;
       }
       
       // Fallback: get all products and filter locally
-      console.log('🔄 API fallback to local filtering');
-      const allProducts = await this.getAllProducts();
+      // console.log('🔄 API fallback to local filtering');
+      const allProductsResult = await this.getAllProducts();
+      const allProducts = allProductsResult.products;
       
       let filteredProducts = allProducts;
       
@@ -258,7 +251,7 @@ export class ProductController {
         filteredProducts = this.sortProducts(filteredProducts, filters.sortBy);
       }
       
-      console.log(`✅ Local filtering returned ${filteredProducts.length} products`);
+      // console.log(`✅ Local filtering returned ${filteredProducts.length} products`);
       return filteredProducts;
     } catch (error) {
       console.error('❌ ProductController - filterProducts error:', error);
@@ -268,29 +261,30 @@ export class ProductController {
 
   static async getAllCategories(): Promise<string[]> {
     try {
-      console.log('🔄 Fetching categories...');
+      // console.log('🔄 Fetching categories...');
       
       // Try cache first
       const cached = await CacheService.get<string[]>('cache:categories:all');
       if (cached && cached.length) {
-        console.log(`🧠 Cache hit: ${cached.length} categories`);
+        // console.log(`🧠 Cache hit: ${cached.length} categories`);
         return cached;
       }
 
       // Try API
       const response = await apiService.getCategories();
       if (response.success && Array.isArray(response.data)) {
-        console.log(`✅ API returned ${response.data.length} categories`);
+        // console.log(`✅ API returned ${response.data.length} categories`);
         CacheService.set('cache:categories:all', response.data, CacheTTL.LONG).catch(() => {});
         return response.data;
       }
       
       // Fallback: get unique categories from all products
-      console.log('🔄 API fallback to local category extraction');
-      const allProducts = await this.getAllProducts();
-      const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))];
+      // console.log('🔄 API fallback to local category extraction');
+      const allProductsResult = await this.getAllProducts();
+      const allProducts = allProductsResult.products;
+      const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))] as string[];
       
-      console.log(`✅ Found ${categories.length} unique categories`);
+      // console.log(`✅ Found ${categories.length} unique categories`);
       const sorted = categories.sort();
       CacheService.set('cache:categories:all', sorted, CacheTTL.MEDIUM).catch(() => {});
       return sorted;
@@ -300,31 +294,20 @@ export class ProductController {
     }
   }
 
-  static async getProductsByCategory(category: string): Promise<Product[]> {
-    try {
-      console.log(`🔄 Fetching products for category: ${category}`);
-      
-      // Use filter method with category
-      return await this.filterProducts({ category });
-    } catch (error) {
-      console.error('❌ ProductController - getProductsByCategory error:', error);
-      return [];
-    }
-  }
 
   static async getCategories(): Promise<string[]> {
     try {
-      console.log('🔄 Fetching categories...');
+      // console.log('🔄 Fetching categories...');
       
       // Try API first
       const response = await apiService.getCategories();
       if (response.success && Array.isArray(response.data)) {
-        console.log(`✅ API returned ${response.data.length} categories`);
+        // console.log(`✅ API returned ${response.data.length} categories`);
         return response.data;
       }
       
       // Fallback to XML service
-      console.log('🔄 API fallback to XML service for categories');
+      // console.log('🔄 API fallback to XML service for categories');
       const categoryTrees = await XmlProductService.fetchCategories();
       const categories = Array.isArray(categoryTrees)
         ? categoryTrees.map(cat => cat.mainCategory)
@@ -340,12 +323,12 @@ export class ProductController {
 
   static async getCategoryTree(): Promise<{ mainCategory: string; subCategories: string[] }[]> {
     try {
-      console.log('🔄 Fetching category tree...');
+      // console.log('🔄 Fetching category tree...');
       
       // Try API first
       const response = await apiService.getCategories();
       if (response.success && response.data) {
-        console.log(`✅ API returned ${response.data.length} categories for tree`);
+        // console.log(`✅ API returned ${response.data.length} categories for tree`);
         
         // Convert flat categories to tree structure
         const categoryMap = new Map<string, Set<string>>();
@@ -375,7 +358,7 @@ export class ProductController {
       }
       
       // Fallback to XML service
-      console.log('🔄 API fallback to XML service for category tree');
+      // console.log('🔄 API fallback to XML service for category tree');
       return await XmlProductService.fetchCategories();
     } catch (error) {
       console.error('❌ ProductController - getCategoryTree error:', error);
@@ -398,20 +381,21 @@ export class ProductController {
 
   static async getBrands(): Promise<string[]> {
     try {
-      console.log('🔄 Fetching brands...');
+      // console.log('🔄 Fetching brands...');
       
       // Try API first
       const response = await apiService.getBrands();
       if (response.success && response.data) {
-        console.log(`✅ API returned ${response.data.length} brands`);
+        // console.log(`✅ API returned ${response.data.length} brands`);
         
         return response.data;
       }
       
       // Fallback: extract brands from cached products
-      console.log('🔄 API fallback to extracting brands from cached products');
-      const allProducts = await this.getAllProducts();
-      const brands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort();
+      // console.log('🔄 API fallback to extracting brands from cached products');
+      const allProductsResult = await this.getAllProducts();
+      const allProducts = allProductsResult.products;
+      const brands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))] as string[];
       
       return brands;
     } catch (error) {
@@ -424,19 +408,20 @@ export class ProductController {
 
   static async getPriceRange(): Promise<{ min: number; max: number }> {
     try {
-      console.log('🔄 Fetching price range...');
+      // console.log('🔄 Fetching price range...');
       
       // Try API first
       const response = await apiService.getPriceRange();
       if (response.success && response.data) {
-        console.log(`✅ API returned price range: ${response.data.min} - ${response.data.max}`);
+        // console.log(`✅ API returned price range: ${response.data.min} - ${response.data.max}`);
         
         return response.data;
       }
       
       // Fallback: calculate from cached products
-      console.log('🔄 API fallback to calculating price range from cached products');
-      const allProducts = await this.getAllProducts();
+      // console.log('🔄 API fallback to calculating price range from cached products');
+      const allProductsResult = await this.getAllProducts();
+      const allProducts = allProductsResult.products;
       
       if (allProducts.length === 0) {
         return { min: 0, max: 0 };
@@ -448,7 +433,7 @@ export class ProductController {
         max: Math.max(...prices)
       };
       
-      console.log(`✅ Calculated price range: ${priceRange.min} - ${priceRange.max}`);
+      // console.log(`✅ Calculated price range: ${priceRange.min} - ${priceRange.max}`);
       
       return priceRange;
     } catch (error) {
@@ -485,15 +470,16 @@ export class ProductController {
 
   static async getPopularProducts(): Promise<Product[]> {
     try {
-      console.log('🔄 Fetching popular products...');
+      // console.log('🔄 Fetching popular products...');
       
-      const products = await this.getAllProducts();
+      const productsResult = await this.getAllProducts();
+      const products = productsResult.products;
       // Popüler ürünleri rating'e göre sırala ve ilk 6 tanesini al
       const popularProducts = products
         .sort((a, b) => b.rating - a.rating)
         .slice(0, 6);
       
-      console.log(`✅ Found ${popularProducts.length} popular products`);
+      // console.log(`✅ Found ${popularProducts.length} popular products`);
       return popularProducts;
     } catch (error) {
       console.error('❌ ProductController - getPopularProducts error:', error);
@@ -503,9 +489,10 @@ export class ProductController {
 
   static async getNewProducts(): Promise<Product[]> {
     try {
-      console.log('🔄 Fetching new products...');
+      // console.log('🔄 Fetching new products...');
       
-      const products = await this.getAllProducts();
+      const productsResult = await this.getAllProducts();
+      const products = productsResult.products;
       // En yeni ürünleri lastUpdated'a göre sırala
       const newProducts = products
         .sort((a, b) => {
@@ -515,7 +502,7 @@ export class ProductController {
         })
         .slice(0, 6);
       
-      console.log(`✅ Found ${newProducts.length} new products`);
+      // console.log(`✅ Found ${newProducts.length} new products`);
       return newProducts;
     } catch (error) {
       console.error('❌ ProductController - getNewProducts error:', error);
@@ -561,6 +548,7 @@ export class ProductController {
         price: parseFloat(apiProduct.price) || 0,
         category: apiProduct.category || '',
         image: apiProduct.image || 'https://via.placeholder.com/300x300?text=No+Image',
+        images: apiProduct.images || [],
         stock: parseInt(apiProduct.stock) || 0,
         brand: apiProduct.brand || '',
         rating: parseFloat(apiProduct.rating) || 0,
@@ -582,6 +570,7 @@ export class ProductController {
         price: 0,
         category: 'Unknown',
         image: 'https://via.placeholder.com/300x300?text=Error',
+        images: [],
         stock: 0,
         brand: 'Unknown',
         rating: 0,
@@ -597,6 +586,23 @@ export class ProductController {
 
   // Helper function to extract variations from product variations
   private static extractVariations(variations: ProductVariationOption[]): { [key: string]: string } {
+    const result: { [key: string]: string } = {};
+    
+    if (!variations || !Array.isArray(variations)) {
+      return result;
+    }
+
+    variations.forEach(variation => {
+      if (variation.name && variation.value) {
+        result[variation.name.toLowerCase()] = variation.value;
+      }
+    });
+
+    return result;
+  }
+
+  // Helper function to extract variations from ProductVariation[]
+  private static extractVariationsFromProduct(variations: any[]): { [key: string]: string } {
     const result: { [key: string]: string } = {};
     
     if (!variations || !Array.isArray(variations)) {

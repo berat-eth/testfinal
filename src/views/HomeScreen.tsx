@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -63,8 +63,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const COUNTDOWN_STORAGE_KEY = 'home_popular_countdown_remaining';
   const COUNTDOWN_SAVED_AT_KEY = 'home_popular_countdown_saved_at';
 
-  // Modern slider data
-  const sliderData = [
+  // Modern slider data - memoized to prevent re-renders
+  const sliderData = useMemo(() => [
     {
       id: 1,
       title: 'Yeni Sezon',
@@ -97,10 +97,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
       gradient: Gradients.primary,
     },
-  ];
+  ], []);
 
-  // Category icons mapping - using local assets
-  const categoryIcons: { [key: string]: any } = {
+  // Category icons mapping - memoized to prevent re-renders
+  const categoryIcons = useMemo(() => ({
     'Mont': require('../../assets/kategori_icon/mont.png'),
     'Pantolon': require('../../assets/kategori_icon/pantolon.png'),
     'Gömlek': require('../../assets/kategori_icon/gömlek.png'),
@@ -122,7 +122,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     'Yelek': require('../../assets/kategori_icon/waistcoat_6229344.png'),
     'Yardımcı Giyim Ürünleri': require('../../assets/kategori_icon/aplike.png'),
     'Yağmurluk': require('../../assets/kategori_icon/yağmurluk.png'),
-  };
+  }), []);
 
   useEffect(() => {
     const init = async () => {
@@ -163,11 +163,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return () => clearInterval(timer);
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      // Optimize: Load only necessary data first, then load additional data
       const [allProductsResponse, cats] = await Promise.all([
-        ProductController.getAllProducts(1, 1000), // Tüm ürünleri al (1000 limit)
+        ProductController.getAllProducts(1, 50), // Reduced initial load
         ProductController.getAllCategories(),
       ]);
 
@@ -248,9 +249,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const refreshPopularProducts = async () => {
+  const refreshPopularProducts = useCallback(async () => {
     try {
       const allProductsResponse = await ProductController.getAllProducts(1, 1000); // Tüm ürünleri al
       const allProducts = allProductsResponse?.products || [];
@@ -276,7 +277,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     } catch (error) {
       console.error('Error refreshing popular products:', error);
     }
-  };
+  }, [newProducts]);
 
   const restoreCountdownAndStart = async () => {
     try {
@@ -371,15 +372,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setRefreshing(false);
   };
 
-  const handleProductPress = (product: Product) => {
+  const handleProductPress = useCallback((product: Product) => {
     navigation.navigate('ProductDetail', { productId: product.id });
-  };
+  }, [navigation]);
 
-  const handleCategoryPress = (category: string) => {
+  const handleCategoryPress = useCallback((category: string) => {
     navigation.navigate('ProductList', { category });
-  };
+  }, [navigation]);
 
-  const handleAddToCart = async (product: Product) => {
+  const handleAddToCart = useCallback(async (product: Product) => {
     try {
       if (product.stock === 0) {
         Alert.alert('Uyarı', 'Bu ürün stokta yok.');
@@ -423,9 +424,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       console.error('Error adding to cart:', error);
       Alert.alert('Hata', 'Ürün sepete eklenirken bir hata oluştu');
     }
-  };
+  }, [updateCart, navigation]);
 
-  const handleToggleFavorite = async (product: Product) => {
+  const handleToggleFavorite = useCallback(async (product: Product) => {
     try {
       const userId = await UserController.getCurrentUserId(); // Get current user ID
       const isFavorite = favoriteProducts.includes(product.id);
@@ -462,7 +463,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       console.error('Error toggling favorite:', error);
       Alert.alert('Hata', 'Favori işlemi sırasında bir hata oluştu');
     }
-  };
+  }, [favoriteProducts]);
 
   const handleOfferPress = async (offer: any) => {
     try {
@@ -570,7 +571,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     </View>
   );
 
-  const renderCategories = () => (
+  const renderCategories = useMemo(() => (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleContainer}>
@@ -589,9 +590,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.categoriesContent}
+        removeClippedSubviews={true}
       >
         {(categories || []).map((category, index) => {
-          const iconSource = categoryIcons[category];
+          const iconSource = categoryIcons[category as keyof typeof categoryIcons];
           return (
             <TouchableOpacity
               key={`category-${index}-${category}`}
@@ -619,9 +621,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         })}
       </ScrollView>
     </View>
-  );
+  ), [categories, categoryIcons, navigation]);
 
-  const renderProductCard = ({ item }: { item: Product }) => (
+  const renderProductCard = useCallback(({ item }: { item: Product }) => (
     <ModernCard
       onPress={() => handleProductPress(item)}
       style={styles.productCard}
@@ -676,7 +678,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </View>
       </View>
     </ModernCard>
-  );
+  ), [favoriteProducts, handleProductPress, handleToggleFavorite, handleAddToCart]);
 
   const renderPopularProducts = () => (
     <View style={styles.sectionContainer}>
@@ -705,9 +707,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.productList}
         removeClippedSubviews={true}
-        maxToRenderPerBatch={6}
-        initialNumToRender={6}
-        windowSize={10}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        initialNumToRender={3}
+        getItemLayout={(data, index) => ({
+          length: 200,
+          offset: 200 * index,
+          index,
+        })}
       />
     </View>
   );
@@ -731,9 +738,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.productList}
         removeClippedSubviews={true}
-        maxToRenderPerBatch={6}
-        initialNumToRender={6}
-        windowSize={10}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        initialNumToRender={3}
+        getItemLayout={(data, index) => ({
+          length: 200,
+          offset: 200 * index,
+          index,
+        })}
       />
     </View>
   );
@@ -1096,6 +1108,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           keyExtractor={(item) => `recommended-${item.id}`}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.productList}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={3}
+          windowSize={5}
+          initialNumToRender={3}
+          getItemLayout={(data, index) => ({
+            length: 200,
+            offset: 200 * index,
+            index,
+          })}
         />
       </View>
     );
@@ -1123,7 +1144,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
       >
         {renderHeroSlider()}
-        {renderCategories()}
+        {renderCategories}
         {renderFlashDeals()}
         {renderDiscountOffers()}
         {renderCampaigns()}
@@ -1589,5 +1610,36 @@ const styles = StyleSheet.create({
     color: '#333',
     letterSpacing: 0.5,
   },
-
+  // Çoklu görsel stilleri
+  imageIndicator: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  imageIndicatorText: {
+    fontSize: 10,
+    color: 'white',
+    fontWeight: '600',
+  },
+  imageNavButton: {
+    position: 'absolute',
+    top: '50%',
+    transform: [{ translateY: -20 }],
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageNavButtonLeft: {
+    left: Spacing.sm,
+  },
+  imageNavButtonRight: {
+    right: Spacing.sm,
+  },
 });

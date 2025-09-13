@@ -101,24 +101,26 @@ class DetailedActivityLogger {
 
   private async logActivity(activityType: string, activityData: any) {
     if (!this.userId) {
-      console.warn('⚠️ User ID not set for activity logging');
-      return;
+      return; // Silent fail - don't log warnings
     }
 
-    try {
-      await userDataService.logUserActivity({
-        userId: this.userId,
-        activityType,
-        activityData: {
-          ...activityData,
-          timestamp: new Date().toISOString(),
-          sessionId: this.generateSessionId(),
-          deviceInfo: this.getDeviceInfo()
-        }
-      });
-    } catch (error) {
-      console.error('❌ Detailed activity logging failed:', error);
-    }
+    // Non-blocking async logging
+    setImmediate(async () => {
+      try {
+        await userDataService.logUserActivity({
+          userId: this.userId,
+          activityType,
+          activityData: {
+            ...activityData,
+            timestamp: new Date().toISOString(),
+            sessionId: this.generateSessionId(),
+            deviceInfo: this.getDeviceInfo()
+          }
+        });
+      } catch (error) {
+        // Silent fail - don't block main thread
+      }
+    });
   }
 
   private generateSessionId(): string {
@@ -135,32 +137,32 @@ class DetailedActivityLogger {
   }
 
   // ÜRÜN AKTİVİTELERİ
-  async logProductViewed(data: ProductActivityData) {
-    await this.logActivity('product_viewed', {
+  logProductViewed(data: ProductActivityData) {
+    this.logActivity('product_viewed', {
       ...data,
       viewDuration: 0, // Bu değer daha sonra güncellenebilir
       viewSource: 'product_list' // veya 'search', 'recommendation', 'category'
     });
   }
 
-  async logProductDetailViewed(data: ProductActivityData) {
-    await this.logActivity('product_detail_viewed', {
+  logProductDetailViewed(data: ProductActivityData) {
+    this.logActivity('product_detail_viewed', {
       ...data,
       viewDuration: 0,
       viewSource: 'product_detail'
     });
   }
 
-  async logProductImageZoomed(data: ProductActivityData, imageIndex: number) {
-    await this.logActivity('product_image_zoomed', {
+  logProductImageZoomed(data: ProductActivityData, imageIndex: number) {
+    this.logActivity('product_image_zoomed', {
       ...data,
       imageIndex,
       zoomLevel: 'unknown' // Bu değer daha sonra güncellenebilir
     });
   }
 
-  async logProductVariationSelected(data: ProductActivityData, selectedVariation: ProductVariation) {
-    await this.logActivity('product_variation_selected', {
+  logProductVariationSelected(data: ProductActivityData, selectedVariation: ProductVariation) {
+    this.logActivity('product_variation_selected', {
       ...data,
       selectedVariation,
       variationChange: true
@@ -168,8 +170,8 @@ class DetailedActivityLogger {
   }
 
   // SEPET AKTİVİTELERİ
-  async logCartItemAdded(data: CartActivityData) {
-    await this.logActivity('cart_item_added', {
+  logCartItemAdded(data: CartActivityData) {
+    this.logActivity('cart_item_added', {
       ...data,
       cartTotalBefore: 0, // Bu değer daha sonra güncellenebilir
       cartTotalAfter: 0,
@@ -177,8 +179,8 @@ class DetailedActivityLogger {
     });
   }
 
-  async logCartItemRemoved(data: CartActivityData) {
-    await this.logActivity('cart_item_removed', {
+  logCartItemRemoved(data: CartActivityData) {
+    this.logActivity('cart_item_removed', {
       ...data,
       cartTotalBefore: 0,
       cartTotalAfter: 0,
@@ -186,8 +188,8 @@ class DetailedActivityLogger {
     });
   }
 
-  async logCartItemUpdated(data: CartActivityData) {
-    await this.logActivity('cart_item_updated', {
+  logCartItemUpdated(data: CartActivityData) {
+    this.logActivity('cart_item_updated', {
       ...data,
       cartTotalBefore: 0,
       cartTotalAfter: 0,
@@ -195,71 +197,71 @@ class DetailedActivityLogger {
     });
   }
 
-  async logCartViewed() {
-    await this.logActivity('cart_viewed', {
+  logCartViewed() {
+    this.logActivity('cart_viewed', {
       cartItemCount: 0,
       cartTotal: 0,
       isEmpty: true
     });
   }
 
-  async logCartCleared() {
-    await this.logActivity('cart_cleared', {
+  logCartCleared() {
+    this.logActivity('cart_cleared', {
       clearedItemCount: 0,
       clearedTotal: 0
     });
   }
 
   // SİPARİŞ AKTİVİTELERİ
-  async logOrderStarted(data: OrderActivityData) {
-    await this.logActivity('order_started', {
+  logOrderStarted(data: OrderActivityData) {
+    this.logActivity('order_started', {
       ...data,
       step: 'cart_review'
     });
   }
 
-  async logOrderStepCompleted(step: string, data: any) {
-    await this.logActivity('order_step_completed', {
+  logOrderStepCompleted(step: string, data: any) {
+    this.logActivity('order_step_completed', {
       step,
       ...data,
       completedAt: new Date().toISOString()
     });
   }
 
-  async logOrderCompleted(data: OrderActivityData) {
-    await this.logActivity('order_completed', {
+  logOrderCompleted(data: OrderActivityData) {
+    this.logActivity('order_completed', {
       ...data,
       completionTime: new Date().toISOString(),
       orderProcessDuration: 0 // Bu değer daha sonra hesaplanabilir
     });
   }
 
-  async logOrderCancelled(data: OrderActivityData, reason?: string) {
-    await this.logActivity('order_cancelled', {
+  logOrderCancelled(data: OrderActivityData, reason?: string) {
+    this.logActivity('order_cancelled', {
       ...data,
       cancellationReason: reason,
       cancelledAt: new Date().toISOString()
     });
   }
 
-  async logPaymentInitiated(data: OrderActivityData, paymentMethod: string) {
-    await this.logActivity('payment_initiated', {
+  logPaymentInitiated(data: OrderActivityData, paymentMethod: string) {
+    this.logActivity('payment_initiated', {
       ...data,
       paymentMethod,
       paymentAmount: data.totalAmount
     });
   }
 
-  async logPaymentCompleted(data: OrderActivityData, paymentId: string) {
-    await this.logActivity('payment_completed', {
+  logPaymentCompleted(data: OrderActivityData, paymentId: string) {
+    this.logActivity('payment_completed', {
       ...data,
       paymentId,
       paymentCompletedAt: new Date().toISOString()
     });
   }
 
-  async logPaymentFailed(data: OrderActivityData, error: string) {
-    await this.logActivity('payment_failed', {
+  logPaymentFailed(data: OrderActivityData, error: string) {
+    this.logActivity('payment_failed', {
       ...data,
       error,
       failedAt: new Date().toISOString()
@@ -267,23 +269,23 @@ class DetailedActivityLogger {
   }
 
   // ARAMA AKTİVİTELERİ
-  async logSearchPerformed(data: SearchActivityData) {
-    await this.logActivity('search_performed', {
+  logSearchPerformed(data: SearchActivityData) {
+    this.logActivity('search_performed', {
       ...data,
       searchTimestamp: new Date().toISOString()
     });
   }
 
-  async logSearchResultClicked(data: SearchActivityData) {
-    await this.logActivity('search_result_clicked', {
+  logSearchResultClicked(data: SearchActivityData) {
+    this.logActivity('search_result_clicked', {
       ...data,
       clickPosition: 0, // Bu değer daha sonra güncellenebilir
       clickTimestamp: new Date().toISOString()
     });
   }
 
-  async logSearchFilterApplied(filterType: string, filterValue: any) {
-    await this.logActivity('search_filter_applied', {
+  logSearchFilterApplied(filterType: string, filterValue: any) {
+    this.logActivity('search_filter_applied', {
       filterType,
       filterValue,
       appliedAt: new Date().toISOString()
@@ -291,31 +293,31 @@ class DetailedActivityLogger {
   }
 
   // NAVİGASYON AKTİVİTELERİ
-  async logScreenViewed(screenName: string, data?: any) {
-    await this.logActivity('screen_viewed', {
+  logScreenViewed(screenName: string, data?: any) {
+    this.logActivity('screen_viewed', {
       screenName,
       ...data,
       viewTimestamp: new Date().toISOString()
     });
   }
 
-  async logNavigation(data: NavigationActivityData) {
-    await this.logActivity('navigation', {
+  logNavigation(data: NavigationActivityData) {
+    this.logActivity('navigation', {
       ...data,
       navigationTimestamp: new Date().toISOString()
     });
   }
 
   // PROFİL AKTİVİTELERİ
-  async logProfileUpdated(data: ProfileActivityData) {
-    await this.logActivity('profile_updated', {
+  logProfileUpdated(data: ProfileActivityData) {
+    this.logActivity('profile_updated', {
       ...data,
       updatedAt: new Date().toISOString()
     });
   }
 
-  async logSettingsChanged(settingName: string, oldValue: any, newValue: any) {
-    await this.logActivity('settings_changed', {
+  logSettingsChanged(settingName: string, oldValue: any, newValue: any) {
+    this.logActivity('settings_changed', {
       settingName,
       oldValue,
       newValue,
@@ -324,8 +326,8 @@ class DetailedActivityLogger {
   }
 
   // KAMPANYA VE İNDİRİM AKTİVİTELERİ
-  async logDiscountCodeApplied(code: string, discountAmount: number, orderId?: string) {
-    await this.logActivity('discount_code_applied', {
+  logDiscountCodeApplied(code: string, discountAmount: number, orderId?: string) {
+    this.logActivity('discount_code_applied', {
       code,
       discountAmount,
       orderId,
@@ -333,16 +335,16 @@ class DetailedActivityLogger {
     });
   }
 
-  async logDiscountCodeRemoved(code: string, orderId?: string) {
-    await this.logActivity('discount_code_removed', {
+  logDiscountCodeRemoved(code: string, orderId?: string) {
+    this.logActivity('discount_code_removed', {
       code,
       orderId,
       removedAt: new Date().toISOString()
     });
   }
 
-  async logCampaignViewed(campaignId: string, campaignName: string) {
-    await this.logActivity('campaign_viewed', {
+  logCampaignViewed(campaignId: string, campaignName: string) {
+    this.logActivity('campaign_viewed', {
       campaignId,
       campaignName,
       viewedAt: new Date().toISOString()
@@ -350,16 +352,16 @@ class DetailedActivityLogger {
   }
 
   // FAVORİ AKTİVİTELERİ
-  async logProductFavorited(productId: number, productName: string) {
-    await this.logActivity('product_favorited', {
+  logProductFavorited(productId: number, productName: string) {
+    this.logActivity('product_favorited', {
       productId,
       productName,
       favoritedAt: new Date().toISOString()
     });
   }
 
-  async logProductUnfavorited(productId: number, productName: string) {
-    await this.logActivity('product_unfavorited', {
+  logProductUnfavorited(productId: number, productName: string) {
+    this.logActivity('product_unfavorited', {
       productId,
       productName,
       unfavoritedAt: new Date().toISOString()
@@ -367,22 +369,22 @@ class DetailedActivityLogger {
   }
 
   // UYGULAMA AKTİVİTELERİ
-  async logAppOpened() {
-    await this.logActivity('app_opened', {
+  logAppOpened() {
+    this.logActivity('app_opened', {
       openedAt: new Date().toISOString(),
       appVersion: '1.0.0'
     });
   }
 
-  async logAppClosed() {
-    await this.logActivity('app_closed', {
+  logAppClosed() {
+    this.logActivity('app_closed', {
       closedAt: new Date().toISOString(),
       sessionDuration: 0 // Bu değer daha sonra hesaplanabilir
     });
   }
 
-  async logErrorOccurred(error: string, screen: string, action?: string) {
-    await this.logActivity('error_occurred', {
+  logErrorOccurred(error: string, screen: string, action?: string) {
+    this.logActivity('error_occurred', {
       error,
       screen,
       action,

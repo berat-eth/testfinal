@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import './src/utils/console-config';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -6,10 +6,8 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import apiService from './src/utils/api-service';
 import { AppProvider } from './src/contexts/AppContext';
 import { initializeNetworkConfig } from './src/utils/network-config';
-import { debugNetworkConnectivity } from './src/utils/api-debug';
-import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { IP_SERVER_CANDIDATES } from './src/utils/api-config';
-import { findBestServerForApk, getServerStatus } from './src/utils/apk-config';
+import { findBestServerForApk } from './src/utils/apk-config';
 
 // TurboModule uyarılarını gizle
 LogBox.ignoreLogs([
@@ -22,16 +20,11 @@ LogBox.ignoreLogs([
 ]);
 
 export default function App() {
-  const [showWebFallback, setShowWebFallback] = useState(false);
-  const [showRedirectNotice, setShowRedirectNotice] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Network'ü başlangıçta initialize et (SQLite kaldırıldı)
     const setupApp = async () => {
       try {
-        console.log('🚀 Initializing app (without local database)...');
 
         // Production-ready API detection
         const quickTestOnce = async (): Promise<string | null> => {
@@ -39,7 +32,6 @@ export default function App() {
           if (!__DEV__) {
             try {
               const bestServer = await findBestServerForApk();
-              console.log(`✅ APK: Using best server: ${bestServer}`);
               return bestServer;
             } catch (error) {
               console.error('❌ APK: Server detection failed:', error);
@@ -86,7 +78,6 @@ export default function App() {
           if (found) {
             workingUrl = found.includes('/api') ? found : `${found}/api`;
             apiService.setApiUrl(workingUrl);
-            console.log(`✅ Fast startup detection succeeded with: ${workingUrl}`);
             break;
           }
         }
@@ -95,26 +86,15 @@ export default function App() {
         
         // Initialize network configuration with auto-detection
         await initializeNetworkConfig();
-        console.log('✅ Network configuration initialized successfully');
         
-        // Debug network connectivity only in development
-        if (__DEV__) {
-          console.log('🔍 Running network debug in development mode...');
-          await debugNetworkConnectivity();
-        }
         // Test backend connection; başarısız olsa bile yönlendirme yapma
         const health = await apiService.testConnection();
-        setShowRedirectNotice(false);
-        setShowWebFallback(false);
 
         // No periodic retries after redirect requirement
         return () => {};
       } catch (error) {
         console.error('❌ Failed to initialize app:', error);
         // App devam etsin, network hatası olsa bile
-        console.log('⚠️ App will continue without network initialization');
-        setShowRedirectNotice(true);
-        setCountdown(5);
       }
     };
 
