@@ -1610,36 +1610,4 @@ const styles = StyleSheet.create({
     color: '#333',
     letterSpacing: 0.5,
   },
-  // Çoklu görsel stilleri
-  imageIndicator: {
-    position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  imageIndicatorText: {
-    fontSize: 10,
-    color: 'white',
-    fontWeight: '600',
-  },
-  imageNavButton: {
-    position: 'absolute',
-    top: '50%',
-    transform: [{ translateY: -20 }],
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imageNavButtonLeft: {
-    left: Spacing.sm,
-  },
-  imageNavButtonRight: {
-    right: Spacing.sm,
-  },
 });

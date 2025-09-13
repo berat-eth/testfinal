@@ -64,8 +64,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
   const [nowTs, setNowTs] = useState<number>(Date.now());
   const nowIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [showFlashDeals, setShowFlashDeals] = useState(false);
-  const [selectedImageIndices, setSelectedImageIndices] = useState<{ [productId: number]: number }>({});
-  
   // Pagination state
   const [currentPageNum, setCurrentPageNum] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -73,39 +71,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation
   const ITEMS_PER_PAGE = 20;
 
   const searchInputRef = useRef<TextInput>(null);
-
-  // Ürün görsellerini al
-  const getProductImages = (product: Product) => {
-    const images = [];
-    if (product.image) {
-      images.push(product.image);
-    }
-    if (product.images && Array.isArray(product.images)) {
-      images.push(...product.images);
-    }
-    return images;
-  };
-
-  // Görsel değiştirme
-  const handleImageChange = (productId: number, direction: 'next' | 'prev') => {
-    setSelectedImageIndices(prev => {
-      const currentIndex = prev[productId] || 0;
-      const product = products.find(p => p.id === productId);
-      if (!product) return prev;
-      
-      const images = getProductImages(product);
-      if (images.length <= 1) return prev;
-      
-      let newIndex = currentIndex;
-      if (direction === 'next') {
-        newIndex = (currentIndex + 1) % images.length;
-      } else {
-        newIndex = currentIndex === 0 ? images.length - 1 : currentIndex - 1;
-      }
-      
-      return { ...prev, [productId]: newIndex };
-    });
-  };
 
   useEffect(() => {
     loadData();

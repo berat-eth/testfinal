@@ -36,22 +36,7 @@ export const ModernProductCard: React.FC<ModernProductCardProps> = ({
   variant = 'default',
   width,
 }) => {
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const cardWidth = width || (variant === 'horizontal' ? screenWidth - Spacing.lg * 2 : screenWidth * 0.45);
-
-  // Ürün görsellerini al
-  const getProductImages = () => {
-    const images = [];
-    if (product.image) {
-      images.push(product.image);
-    }
-    if (product.images && Array.isArray(product.images)) {
-      images.push(...product.images);
-    }
-    return images;
-  };
-
-  const productImages = getProductImages();
 
   const renderStockStatus = () => {
     if (product.stock === 0) {
@@ -97,19 +82,9 @@ export const ModernProductCard: React.FC<ModernProductCardProps> = ({
         <View style={styles.horizontalContent}>
           <View style={styles.horizontalImageContainer}>
             <Image 
-              source={{ uri: productImages[selectedImageIndex] || product.image || 'https://via.placeholder.com/300x300?text=No+Image' }} 
+              source={{ uri: product.image || 'https://via.placeholder.com/300x300?text=No+Image' }} 
               style={styles.horizontalImage} 
             />
-            
-            {/* Çoklu görsel göstergesi */}
-            {productImages.length > 1 && (
-              <View style={styles.imageIndicator}>
-                <Text style={styles.imageIndicatorText}>
-                  {selectedImageIndex + 1} / {productImages.length}
-                </Text>
-              </View>
-            )}
-            
             {renderStockStatus()}
           </View>
           <View style={styles.horizontalInfo}>
@@ -220,19 +195,9 @@ export const ModernProductCard: React.FC<ModernProductCardProps> = ({
     >
       <View style={styles.imageContainer}>
         <Image 
-          source={{ uri: productImages[selectedImageIndex] || product.image || 'https://via.placeholder.com/300x300?text=No+Image' }} 
+          source={{ uri: product.image || 'https://via.placeholder.com/300x300?text=No+Image' }} 
           style={styles.image} 
         />
-        
-        {/* Çoklu görsel göstergesi */}
-        {productImages.length > 1 && (
-          <View style={styles.imageIndicator}>
-            <Text style={styles.imageIndicatorText}>
-              {selectedImageIndex + 1} / {productImages.length}
-            </Text>
-          </View>
-        )}
-        
         {renderStockStatus()}
         {onToggleFavorite && (
           <TouchableOpacity
@@ -509,20 +474,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: Colors.text,
-  },
-  // Çoklu görsel göstergesi stilleri
-  imageIndicator: {
-    position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  imageIndicatorText: {
-    fontSize: 10,
-    color: Colors.textOnPrimary,
-    fontWeight: '600',
   },
 });

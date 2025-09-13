@@ -46,7 +46,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: ProductVariationOption }>({});
   const [currentPrice, setCurrentPrice] = useState(0);
   const [currentStock, setCurrentStock] = useState(0);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [viewerCount, setViewerCount] = useState<number>(0);
   const [showViewer, setShowViewer] = useState<boolean>(false);
@@ -109,23 +108,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     setCurrentStock(minStock);
   };
 
-  const getProductImages = () => {
-    if (!product) return [];
-    
-    const images = [];
-    
-    // Ana görsel
-    if (product.image) {
-      images.push(product.image);
-    }
-    
-    // Ek görseller (JSON array olarak saklanıyor)
-    if (product.images && Array.isArray(product.images)) {
-      images.push(...product.images);
-    }
-    
-    return images;
-  };
 
   const handleVariationChange = (newSelectedOptions: { [key: string]: ProductVariationOption }) => {
     setSelectedOptions(newSelectedOptions);
@@ -336,8 +318,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     );
   }
 
-  const productImages = getProductImages();
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -350,19 +330,10 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         {/* Ana Görsel */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: productImages[selectedImageIndex] || product.image || 'https://via.placeholder.com/400x400?text=No+Image' }}
+            source={{ uri: product.image || 'https://via.placeholder.com/400x400?text=No+Image' }}
             style={styles.image}
             resizeMode="cover"
           />
-          
-          {/* Görsel Sayacı */}
-          {productImages.length > 1 && (
-            <View style={styles.imageCounter}>
-              <Text style={styles.imageCounterText}>
-                {selectedImageIndex + 1} / {productImages.length}
-              </Text>
-            </View>
-          )}
           
           {/* Favori Butonu */}
           <TouchableOpacity
@@ -376,34 +347,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             />
           </TouchableOpacity>
         </View>
-
-        {/* Küçük Görseller */}
-        {productImages.length > 1 && (
-          <View style={styles.thumbnailContainer}>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.thumbnailScrollContent}
-            >
-              {productImages.map((image, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.thumbnail,
-                    selectedImageIndex === index && styles.selectedThumbnail
-                  ]}
-                  onPress={() => setSelectedImageIndex(index)}
-                >
-                  <Image
-                    source={{ uri: image }}
-                    style={styles.thumbnailImage}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
 
         <View style={styles.content}>
           <Text style={styles.brand}>{product.brand}</Text>
@@ -571,44 +514,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 400,
-  },
-  imageCounter: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  imageCounterText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  thumbnailContainer: {
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-  },
-  thumbnailScrollContent: {
-    paddingHorizontal: 4,
-  },
-  thumbnail: {
-    width: 70,
-    height: 70,
-    marginRight: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    overflow: 'hidden',
-  },
-  selectedThumbnail: {
-    borderColor: '#000000',
-  },
-  thumbnailImage: {
-    width: '100%',
-    height: '100%',
   },
   content: {
     paddingHorizontal: 20,
