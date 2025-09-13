@@ -434,6 +434,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             productName={product.name}
             productPrice={currentPrice}
             productImage={product.image}
+            productBrand={product.brand}
+            productDescription={product.description}
             onShareSuccess={(platform, expGained) => {
               console.log(`Paylaşım başarılı: ${platform}, +${expGained} EXP`);
             }}

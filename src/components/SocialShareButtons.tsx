@@ -5,19 +5,17 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Linking,
-  Share,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { SocialSharingController } from '../controllers/SocialSharingController';
-import { UserLevelController } from '../controllers/UserLevelController';
-import { UserController } from '../controllers/UserController';
+import { ShareUtils, ProductShareData } from '../utils/shareUtils';
 
 interface SocialShareButtonsProps {
   productId: string;
   productName: string;
   productPrice: number;
   productImage?: string;
+  productBrand?: string;
+  productDescription?: string;
   onShareSuccess?: (platform: string, expGained: number) => void;
 }
 
@@ -26,6 +24,8 @@ export const SocialShareButtons: React.FC<SocialShareButtonsProps> = ({
   productName,
   productPrice,
   productImage,
+  productBrand,
+  productDescription,
   onShareSuccess,
 }) => {
   const [sharing, setSharing] = useState<string | null>(null);
@@ -65,40 +65,19 @@ export const SocialShareButtons: React.FC<SocialShareButtonsProps> = ({
     try {
       setSharing(platform);
       
-      const currentUser = await UserController.getCurrentUser();
-      if (!currentUser) {
-        Alert.alert('Hata', 'Paylaşım yapmak için giriş yapmanız gerekiyor.');
-        return;
-      }
-
-      const shareText = `🔥 ${productName} - ${productPrice} TL\n\nKamp malzemeleri için Huğlu Outdoor'u keşfet! 🏕️\n\n#Kamp #Outdoor #HuğluOutdoor`;
-      const shareUrl = `https://huglu.com/product/${productId}`;
-
-      // Native share dialog'u göster
-      const shareOptions = {
-        message: `${shareText}\n\n${shareUrl}`,
-        url: shareUrl,
-        title: productName,
+      const productData: ProductShareData = {
+        productName,
+        productPrice,
+        productImage,
+        productBrand,
+        productDescription,
       };
 
-      const result = await Share.share(shareOptions);
-
-      if (result.action === Share.sharedAction) {
-        // Paylaşım başarılı, EXP ekle
-        const expResult = await UserLevelController.addSocialShareExp(currentUser.id.toString());
-        
-        if (expResult.success) {
-          Alert.alert(
-            '🎉 Paylaşım Başarılı!',
-            `+25 EXP kazandınız!\n\n${expResult.message}`,
-            [{ text: 'Harika!' }]
-          );
-          
-          onShareSuccess?.(platform, 25);
-        } else {
-          Alert.alert('Paylaşım Başarılı!', 'Ürünü başarıyla paylaştınız.');
-        }
-      }
+      await ShareUtils.shareProduct(
+        productData,
+        platform,
+        onShareSuccess
+      );
     } catch (error) {
       console.error('Error sharing to social:', error);
       Alert.alert('Hata', 'Paylaşım sırasında bir hata oluştu.');

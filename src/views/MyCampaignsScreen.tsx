@@ -132,7 +132,7 @@ export default function MyCampaignsScreen() {
       const platform = taskId.split('-')[0];
       const shareUrl = SocialSharingController.generateShareUrl(platform);
       
-      // Native share dialog'u kullan
+      // Genel kamp ürünleri paylaşımı
       const { Share } = require('react-native');
       const shareText = `🔥 Harika kamp ürünleri keşfet!\n\nHuğlu Outdoor'da indirimli fiyatlarla kamp malzemeleri! 🏕️\n\n#Kamp #Outdoor #HuğluOutdoor`;
       const shareUrl = 'https://huglu.com';

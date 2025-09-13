@@ -5,11 +5,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Share,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { UserLevelController } from '../controllers/UserLevelController';
-import { UserController } from '../controllers/UserController';
+import { ShareUtils, CartShareData } from '../utils/shareUtils';
 
 interface CartShareButtonsProps {
   cartItems: Array<{
@@ -69,40 +67,16 @@ export const CartShareButtons: React.FC<CartShareButtonsProps> = ({
     try {
       setSharing(platform);
       
-      const currentUser = await UserController.getCurrentUser();
-      if (!currentUser) {
-        Alert.alert('Hata', 'Paylaşım yapmak için giriş yapmanız gerekiyor.');
-        return;
-      }
-
-      const shareText = generateCartShareText();
-      const shareUrl = 'https://huglu.com/cart';
-
-      // Native share dialog'u göster
-      const shareOptions = {
-        message: `${shareText}\n\n${shareUrl}`,
-        url: shareUrl,
-        title: 'Huğlu Outdoor Sepetim',
+      const cartData: CartShareData = {
+        cartItems,
+        totalAmount,
       };
 
-      const result = await Share.share(shareOptions);
-
-      if (result.action === Share.sharedAction) {
-        // Paylaşım başarılı, EXP ekle
-        const expResult = await UserLevelController.addSocialShareExp(currentUser.id.toString());
-        
-        if (expResult.success) {
-          Alert.alert(
-            '🎉 Sepet Paylaşımı Başarılı!',
-            `+25 EXP kazandınız!\n\n${expResult.message}`,
-            [{ text: 'Harika!' }]
-          );
-          
-          onShareSuccess?.(platform, 25);
-        } else {
-          Alert.alert('Paylaşım Başarılı!', 'Sepetinizi başarıyla paylaştınız.');
-        }
-      }
+      await ShareUtils.shareCart(
+        cartData,
+        platform,
+        onShareSuccess
+      );
     } catch (error) {
       console.error('Error sharing cart:', error);
       Alert.alert('Hata', 'Paylaşım sırasında bir hata oluştu.');
