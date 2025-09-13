@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from '../utils/api-config';
+import { safeJsonParse } from '../utils/api-service';
 import { UserLevel, UserLevelProgress, ExpTransaction, UserLevelSystem } from '../models/UserLevel';
 
 export class UserLevelController {
@@ -18,7 +19,11 @@ export class UserLevelController {
         throw new Error('Seviye bilgileri yüklenemedi');
       }
 
-      const data = await response.json();
+      // Güvenli JSON parse
+      const data = await safeJsonParse(response);
+      if (!data) {
+        return null;
+      }
       return data.levelProgress || null;
     } catch (error) {
       console.error('Error fetching user level:', error);
@@ -44,7 +49,15 @@ export class UserLevelController {
         throw new Error('EXP geçmişi yüklenemedi');
       }
 
-      const data = await response.json();
+      // Güvenli JSON parse
+      const data = await safeJsonParse(response);
+      if (!data) {
+        return {
+          transactions: [],
+          total: 0,
+          hasMore: false,
+        };
+      }
       return {
         transactions: data.transactions || [],
         total: data.total || 0,
@@ -253,7 +266,14 @@ export class UserLevelController {
         throw new Error('Ödüller alınamadı');
       }
 
-      const data = await response.json();
+      // Güvenli JSON parse
+      const data = await safeJsonParse(response);
+      if (!data) {
+        return {
+          success: false,
+          rewards: [],
+        };
+      }
       return {
         success: true,
         rewards: data.rewards || [],
@@ -291,7 +311,21 @@ export class UserLevelController {
         throw new Error('Seviye istatistikleri yüklenemedi');
       }
 
-      const data = await response.json();
+      // Güvenli JSON parse
+      const data = await safeJsonParse(response);
+      if (!data) {
+        return {
+          totalExp: 0,
+          currentLevel: UserLevelSystem.getAllLevels()[0],
+          nextLevel: null,
+          expToNextLevel: 0,
+          progressPercentage: 0,
+          totalPurchases: 0,
+          totalInvitations: 0,
+          totalSocialShares: 0,
+          levelUpCount: 0,
+        };
+      }
       return data.stats || {
         totalExp: 0,
         currentLevel: UserLevelSystem.getAllLevels()[0],

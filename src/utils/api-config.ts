@@ -9,19 +9,19 @@ export interface ApiConfig {
 // Environment-based API configurations
 export const API_CONFIGS: Record<string, ApiConfig> = {
   development: {
-    baseUrl: 'http://213.142.159.135:3000/api',
+    baseUrl: 'https://api.zerodaysoftware.tr/api',
     timeout: 30000,
     retryAttempts: 2,
     environment: 'development'
   },
   staging: {
-    baseUrl: 'http://213.142.159.135:3000/api',
+    baseUrl: 'https://api.zerodaysoftware.tr/api',
     timeout: 45000,
     retryAttempts: 3,
     environment: 'staging'
   },
   production: {
-    baseUrl: 'http://213.142.159.135:3000/api',
+    baseUrl: 'https://api.zerodaysoftware.tr/api',
     timeout: 30000, // 30 seconds for production
     retryAttempts: 5, // More retry attempts for production
     environment: 'production'
@@ -30,7 +30,7 @@ export const API_CONFIGS: Record<string, ApiConfig> = {
 
 // Remote server configurations
 export const REMOTE_SERVERS = {
-  primary: 'http://213.142.159.135:3000/api',
+  primary: 'https://api.zerodaysoftware.tr/api',
   backup: 'http://213.142.159.135:3000/api',
   local: 'http://213.142.159.135:3000/api'
 };

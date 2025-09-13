@@ -1178,5 +1178,24 @@ class ApiService {
 
 export const apiService = new ApiService();
 
+// Güvenli JSON parse yardımcı fonksiyonu
+export async function safeJsonParse(response: Response): Promise<any> {
+  try {
+    const responseText = await response.text();
+    
+    // Boş veya geçersiz response kontrolü
+    if (!responseText || responseText.trim() === '' || responseText === 'undefined') {
+      console.warn('Empty or invalid response from API');
+      return null;
+    }
+
+    // JSON parse et
+    return JSON.parse(responseText);
+  } catch (error) {
+    console.error('Error parsing JSON response:', error);
+    return null;
+  }
+}
+
 // Varsayılan API anahtarı kaldırıltı; uygulama içi konfigürasyondan veya kullanıcı oturumundan set edilmelidir.
 export default apiService;

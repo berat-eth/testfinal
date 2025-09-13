@@ -224,7 +224,20 @@ export class GroupDiscountController {
         throw new Error('Davetiye yanıtlanamadı');
       }
 
-      const data = await apiResponse.json();
+      // Response'u önce text olarak al
+      const responseText = await apiResponse.text();
+      
+      // Boş veya geçersiz response kontrolü
+      if (!responseText || responseText.trim() === '' || responseText === 'undefined') {
+        console.warn('Empty or invalid response from group discount API');
+        return {
+          success: response === 'accept',
+          group: response === 'accept' ? this.getDefaultGroupDiscounts()[0] : undefined,
+        };
+      }
+
+      // JSON parse et
+      const data = JSON.parse(responseText);
       return data;
     } catch (error) {
       console.error('Error responding to invitation:', error);

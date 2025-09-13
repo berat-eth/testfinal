@@ -85,7 +85,17 @@ export class ShoppingCompetitionController {
         throw new Error('Yarışmalar yüklenemedi');
       }
 
-      const data = await response.json();
+      // Response'u önce text olarak al
+      const responseText = await response.text();
+      
+      // Boş veya geçersiz response kontrolü
+      if (!responseText || responseText.trim() === '' || responseText === 'undefined') {
+        console.warn('Empty or invalid response from competitions API');
+        return [];
+      }
+
+      // JSON parse et
+      const data = JSON.parse(responseText);
       return data.competitions || [];
     } catch (error) {
       console.error('Error fetching competitions:', error);
@@ -239,7 +249,17 @@ export class ShoppingCompetitionController {
         throw new Error('Başarımlar yüklenemedi');
       }
 
-      const data = await response.json();
+      // Response'u önce text olarak al
+      const responseText = await response.text();
+      
+      // Boş veya geçersiz response kontrolü
+      if (!responseText || responseText.trim() === '' || responseText === 'undefined') {
+        console.warn('Empty or invalid response from achievements API');
+        return this.getDefaultAchievements();
+      }
+
+      // JSON parse et
+      const data = JSON.parse(responseText);
       return data.achievements || [];
     } catch (error) {
       console.error('Error fetching achievements:', error);

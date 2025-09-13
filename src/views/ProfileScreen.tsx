@@ -20,7 +20,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserController } from '../controllers/UserController';
 import { OrderController } from '../controllers/OrderController';
 import { ProductController } from '../controllers/ProductController';
+import { UserLevelController } from '../controllers/UserLevelController';
 import { User, Order } from '../utils/types';
+import { UserLevelProgress } from '../models/UserLevel';
+import { UserLevelCard } from '../components/UserLevelCard';
 import { LoadingIndicator } from '../components/LoadingIndicator';
 import { useRealTimeUpdates } from '../hooks/useRealTimeUpdates';
 import { RealTimeStatusBar } from '../components/RealTimeStatusBar';
@@ -118,6 +121,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [activeOrders, setActiveOrders] = useState(0);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [userLevel, setUserLevel] = useState<UserLevelProgress | null>(null);
 
   // Real-time updates hook
   const { networkStatus, checkNetworkStatus } = useRealTimeUpdates();
@@ -168,6 +172,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         
         // Load user profile data from database
         await loadUserProfileData(user.id);
+        
+        // Load user level data
+        await loadUserLevelData(user.id);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -219,6 +226,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       setOrders(userOrders);
     } catch (error) {
       console.error('Error loading orders:', error);
+    }
+  };
+
+  const loadUserLevelData = async (userId: number) => {
+    try {
+      const levelData = await UserLevelController.getUserLevel(userId.toString());
+      setUserLevel(levelData);
+    } catch (error) {
+      console.error('Error loading user level data:', error);
     }
   };
 
@@ -733,6 +749,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             </View>
           </View>
         </View>
+
+        {/* User Level Card */}
+        {userLevel && (
+          <View style={styles.levelCardContainer}>
+            <UserLevelCard 
+              levelProgress={userLevel} 
+              compact={true}
+              onPress={() => {
+                // Seviye detay sayfasına yönlendirme
+                navigation.navigate('UserLevel');
+              }}
+            />
+          </View>
+        )}
 
         {/* Simple Stats Cards */}
         <View style={styles.modernStatsContainer}>
@@ -1427,6 +1457,10 @@ const styles = StyleSheet.create({
     color: '#15803d',
     marginLeft: 4,
     fontWeight: '500',
+  },
+  levelCardContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   modernHeaderActions: {
     flexDirection: 'row',

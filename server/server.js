@@ -310,6 +310,30 @@ const poolWrapper = {
   }
 };
 
+// Create user_exp_transactions table if not exists
+async function createUserExpTransactionsTable() {
+  try {
+    await poolWrapper.execute(`
+      CREATE TABLE IF NOT EXISTS user_exp_transactions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        userId VARCHAR(255) NOT NULL,
+        tenantId VARCHAR(255) NOT NULL,
+        source VARCHAR(50) NOT NULL,
+        amount INT NOT NULL,
+        description TEXT,
+        orderId VARCHAR(255),
+        productId VARCHAR(255),
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_tenant (userId, tenantId),
+        INDEX idx_timestamp (timestamp)
+      )
+    `);
+    console.log('✅ user_exp_transactions table created/verified');
+  } catch (error) {
+    console.error('❌ Error creating user_exp_transactions table:', error);
+  }
+}
+
 async function initializeDatabase() {
   try {
     pool = mysql.createPool(dbConfig);
@@ -322,6 +346,9 @@ async function initializeDatabase() {
     
     // Create database schema
     await createDatabaseSchema(pool);
+    
+    // Create user level system tables
+    await createUserExpTransactionsTable();
     
     // Initialize XML Sync Service
     xmlSyncService = new XmlSyncService(pool);
@@ -1669,12 +1696,22 @@ app.post('/api/orders', authenticateTenant, async (req, res) => {
         );
       }
       
+      // Add EXP for purchase
+      const baseExp = 50; // Base EXP for purchase
+      const orderExp = Math.floor(totalAmount * 0.1); // 10% of order total
+      const totalExp = baseExp + orderExp;
+      
+      await connection.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, orderId) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, req.tenant.id, 'purchase', totalExp, `Alışveriş: ${totalAmount} TL`, orderId]
+      );
+      
       // Commit transaction
       await connection.commit();
       connection.release();
       
-      console.log(`✅ Order created successfully: ${orderId} with ${items.length} items`);
-      res.json({ success: true, data: { orderId } });
+      console.log(`✅ Order created successfully: ${orderId} with ${items.length} items, ${totalExp} EXP added`);
+      res.json({ success: true, data: { orderId, expGained: totalExp } });
       
     } catch (error) {
       // Rollback transaction
@@ -1815,8 +1852,7 @@ async function createFlashDealsTable() {
   }
 }
 
-// Initialize flash deals table
-createFlashDealsTable();
+// Initialize flash deals table - moved to startServer function
 
 // Admin - Get all flash deals
 app.get('/api/admin/flash-deals', authenticateAdmin, async (req, res) => {
@@ -2462,6 +2498,9 @@ app.get('/api/sync/status', (req, res) => {
 // Start server
 async function startServer() {
   await initializeDatabase();
+  
+  // Initialize flash deals table
+  await createFlashDealsTable();
   
   // Cart endpoints
   app.get('/api/cart/:userId', authenticateTenant, async (req, res) => {
@@ -5116,6 +5155,221 @@ app.post('/webhook/whatsapp', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// ==================== USER LEVEL SYSTEM API ====================
+
+// Get user level information
+app.get('/api/user-level/:userId', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Get user's total EXP
+    const [expRows] = await poolWrapper.execute(
+      'SELECT SUM(amount) as total_exp FROM user_exp_transactions WHERE userId = ? AND tenantId = ?',
+      [userId, req.tenant.id]
+    );
+    
+    const totalExp = expRows[0].total_exp || 0;
+    
+    // Calculate level based on EXP
+    const levels = [
+      { id: 'bronze', name: 'bronze', displayName: 'Bronz', minExp: 0, maxExp: 1500, color: '#CD7F32', icon: 'medal', multiplier: 1.0 },
+      { id: 'iron', name: 'iron', displayName: 'Demir', minExp: 1500, maxExp: 4500, color: '#C0C0C0', icon: 'shield', multiplier: 1.2 },
+      { id: 'gold', name: 'gold', displayName: 'Altın', minExp: 4500, maxExp: 10500, color: '#FFD700', icon: 'star', multiplier: 1.5 },
+      { id: 'platinum', name: 'platinum', displayName: 'Platin', minExp: 10500, maxExp: 22500, color: '#E5E4E2', icon: 'diamond', multiplier: 2.0 },
+      { id: 'diamond', name: 'diamond', displayName: 'Elmas', minExp: 22500, maxExp: Infinity, color: '#B9F2FF', icon: 'diamond', multiplier: 3.0 }
+    ];
+    
+    // Find current level
+    let currentLevel = levels[0];
+    for (let i = levels.length - 1; i >= 0; i--) {
+      if (totalExp >= levels[i].minExp) {
+        currentLevel = levels[i];
+        break;
+      }
+    }
+    
+    // Find next level
+    const nextLevel = levels.find(level => level.minExp > totalExp) || null;
+    const expToNextLevel = nextLevel ? nextLevel.minExp - totalExp : 0;
+    const progressPercentage = nextLevel ? 
+      Math.min(100, ((totalExp - currentLevel.minExp) / (nextLevel.minExp - currentLevel.minExp)) * 100) : 100;
+    
+    res.json({
+      success: true,
+      levelProgress: {
+        currentLevel,
+        nextLevel,
+        currentExp: totalExp,
+        expToNextLevel,
+        progressPercentage,
+        totalExp
+      }
+    });
+  } catch (error) {
+    console.error('Error getting user level:', error);
+    res.status(500).json({ success: false, message: 'Error getting user level' });
+  }
+});
+
+// Add EXP to user
+app.post('/api/user-level/:userId/add-exp', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { source, amount, description, orderId, productId } = req.body;
+    
+    // Insert EXP transaction
+    await poolWrapper.execute(
+      'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, orderId, productId) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [userId, req.tenant.id, source, amount, description || '', orderId || null, productId || null]
+    );
+    
+    res.json({
+      success: true,
+      message: 'EXP added successfully',
+      expGained: amount
+    });
+  } catch (error) {
+    console.error('Error adding EXP:', error);
+    res.status(500).json({ success: false, message: 'Error adding EXP' });
+  }
+});
+
+// Get user EXP history
+app.get('/api/user-level/:userId/history', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+    
+    const [transactions] = await poolWrapper.execute(
+      'SELECT * FROM user_exp_transactions WHERE userId = ? AND tenantId = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',
+      [userId, req.tenant.id, parseInt(limit), offset]
+    );
+    
+    const [totalRows] = await poolWrapper.execute(
+      'SELECT COUNT(*) as total FROM user_exp_transactions WHERE userId = ? AND tenantId = ?',
+      [userId, req.tenant.id]
+    );
+    
+    res.json({
+      success: true,
+      transactions,
+      total: totalRows[0].total,
+      hasMore: offset + transactions.length < totalRows[0].total
+    });
+  } catch (error) {
+    console.error('Error getting EXP history:', error);
+    res.status(500).json({ success: false, message: 'Error getting EXP history' });
+  }
+});
+
+// ==================== SOCIAL CAMPAIGNS API ====================
+
+// Get user social tasks
+app.get('/api/social-tasks/:userId', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // For now, return empty array - will be implemented with real data
+    res.json({
+      success: true,
+      tasks: []
+    });
+  } catch (error) {
+    console.error('Error getting social tasks:', error);
+    res.status(500).json({ success: false, message: 'Error getting social tasks' });
+  }
+});
+
+// Share to social media
+app.post('/api/social-tasks/:userId/share', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { platform, productId, shareText } = req.body;
+    
+    // Add EXP for social sharing
+    await poolWrapper.execute(
+      'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, productId) VALUES (?, ?, ?, ?, ?, ?)',
+      [userId, req.tenant.id, 'social_share', 25, `Sosyal paylaşım: ${platform}`, productId || null]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Social share recorded successfully'
+    });
+  } catch (error) {
+    console.error('Error recording social share:', error);
+    res.status(500).json({ success: false, message: 'Error recording social share' });
+  }
+});
+
+// Get group discounts
+app.get('/api/group-discounts/:userId', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // For now, return empty array - will be implemented with real data
+    res.json({
+      success: true,
+      groups: []
+    });
+  } catch (error) {
+    console.error('Error getting group discounts:', error);
+    res.status(500).json({ success: false, message: 'Error getting group discounts' });
+  }
+});
+
+// Get shopping competitions
+app.get('/api/competitions/:userId', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // For now, return empty array - will be implemented with real data
+    res.json({
+      success: true,
+      competitions: []
+    });
+  } catch (error) {
+    console.error('Error getting competitions:', error);
+    res.status(500).json({ success: false, message: 'Error getting competitions' });
+  }
+});
+
+// Get shared carts
+app.get('/api/cart-sharing/:userId', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // For now, return empty array - will be implemented with real data
+    res.json({
+      success: true,
+      sharedCarts: []
+    });
+  } catch (error) {
+    console.error('Error getting shared carts:', error);
+    res.status(500).json({ success: false, message: 'Error getting shared carts' });
+  }
+});
+
+// Get buy together offers
+app.get('/api/buy-together/:userId', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // For now, return empty array - will be implemented with real data
+    res.json({
+      success: true,
+      offers: []
+    });
+  } catch (error) {
+    console.error('Error getting buy together offers:', error);
+    res.status(500).json({ success: false, message: 'Error getting buy together offers' });
+  }
+});
+
+// ==================== DATABASE TABLES CREATION ====================
+
 
   const localIP = getLocalIPAddress();
   
