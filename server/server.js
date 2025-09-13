@@ -5239,6 +5239,31 @@ app.post('/api/user-level/:userId/add-exp', authenticateTenant, async (req, res)
   }
 });
 
+// Add social share EXP
+app.post('/api/user-level/:userId/social-share-exp', authenticateTenant, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { platform, productId, expGain } = req.body;
+    
+    const expAmount = 25; // Sosyal paylaşım için sabit 25 EXP
+    
+    // Insert EXP transaction
+    await poolWrapper.execute(
+      'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, productId) VALUES (?, ?, ?, ?, ?, ?)',
+      [userId, req.tenant.id, 'social_share', expAmount, `Sosyal paylaşım: ${platform}`, productId || null]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Sosyal paylaşım EXP\'si başarıyla eklendi',
+      expGained: expAmount
+    });
+  } catch (error) {
+    console.error('Error adding social share EXP:', error);
+    res.status(500).json({ success: false, message: 'Sosyal paylaşım EXP\'si eklenemedi' });
+  }
+});
+
 // Get user EXP history
 app.get('/api/user-level/:userId/history', authenticateTenant, async (req, res) => {
   try {

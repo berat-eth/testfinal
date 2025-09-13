@@ -225,14 +225,8 @@ export class UserLevelController {
   }
 
   // Sosyal paylaşım sonrası EXP kazan
-  static async addSocialShareExp(
-    userId: string,
-    platform: string,
-    productId?: string
-  ): Promise<{ success: boolean; expGained: number; newLevel?: UserLevel; levelUp: boolean }> {
+  static async addSocialShareExp(userId: string): Promise<{ success: boolean; message: string; newLevel?: UserLevelProgress }> {
     try {
-      const expGain = UserLevelSystem.calculateExpGain('social_share', 0);
-      
       const response = await fetch(`${this.baseUrl}/${userId}/social-share-exp`, {
         method: 'POST',
         headers: {
@@ -242,9 +236,8 @@ export class UserLevelController {
           'X-API-Key': DEFAULT_TENANT_API_KEY,
         },
         body: JSON.stringify({
-          platform,
-          productId,
-          expGain,
+          platform: 'social_share',
+          expGain: 25,
         }),
       });
 
@@ -255,16 +248,14 @@ export class UserLevelController {
       const data = await response.json();
       return {
         success: true,
-        expGained: data.expGained || 0,
+        message: data.message,
         newLevel: data.newLevel,
-        levelUp: data.levelUp || false,
       };
     } catch (error) {
       console.error('Error adding social share exp:', error);
       return {
         success: false,
-        expGained: 0,
-        levelUp: false,
+        message: 'Sosyal paylaşım EXP\'si eklenemedi',
       };
     }
   }
