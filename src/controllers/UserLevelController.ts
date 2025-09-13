@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from '../utils/api-config';
+import { getApiBaseUrl, DEFAULT_TENANT_API_KEY } from '../utils/api-config';
 import { safeJsonParse } from '../utils/api-service';
 import { UserLevel, UserLevelProgress, ExpTransaction, UserLevelSystem } from '../models/UserLevel';
 
@@ -12,21 +12,29 @@ export class UserLevelController {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'Huglu-Mobile-App/1.0',
+          'X-API-Key': DEFAULT_TENANT_API_KEY,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Seviye bilgileri yüklenemedi');
+        const errorText = await response.text();
+        console.error('❌ UserLevelController: API Error Response:', errorText);
+        throw new Error(`Seviye bilgileri yüklenemedi (${response.status}): ${errorText}`);
       }
 
       // Güvenli JSON parse
       const data = await safeJsonParse(response);
+      
       if (!data) {
+        console.error('❌ UserLevelController: No data received from API');
         return null;
       }
+      
       return data.levelProgress || null;
     } catch (error) {
-      console.error('Error fetching user level:', error);
+      console.error('❌ UserLevelController: Error fetching user level:', error);
       return null;
     }
   }
@@ -42,6 +50,9 @@ export class UserLevelController {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'Huglu-Mobile-App/1.0',
+          'X-API-Key': DEFAULT_TENANT_API_KEY,
         },
       });
 
@@ -89,6 +100,9 @@ export class UserLevelController {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'Huglu-Mobile-App/1.0',
+          'X-API-Key': DEFAULT_TENANT_API_KEY,
         },
         body: JSON.stringify({
           source,
@@ -132,6 +146,9 @@ export class UserLevelController {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'Huglu-Mobile-App/1.0',
+          'X-API-Key': DEFAULT_TENANT_API_KEY,
         },
         body: JSON.stringify({
           orderId,
@@ -175,6 +192,9 @@ export class UserLevelController {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'Huglu-Mobile-App/1.0',
+          'X-API-Key': DEFAULT_TENANT_API_KEY,
         },
         body: JSON.stringify({
           invitedUserId,
@@ -217,6 +237,9 @@ export class UserLevelController {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'Huglu-Mobile-App/1.0',
+          'X-API-Key': DEFAULT_TENANT_API_KEY,
         },
         body: JSON.stringify({
           platform,
@@ -256,6 +279,9 @@ export class UserLevelController {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'Huglu-Mobile-App/1.0',
+          'X-API-Key': DEFAULT_TENANT_API_KEY,
         },
         body: JSON.stringify({
           levelId,
@@ -304,6 +330,9 @@ export class UserLevelController {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'Huglu-Mobile-App/1.0',
+          'X-API-Key': DEFAULT_TENANT_API_KEY,
         },
       });
 
