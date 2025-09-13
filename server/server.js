@@ -3902,13 +3902,14 @@ app.post('/api/discount-wheel/spin', authenticateTenant, async (req, res) => {
       });
     }
     
-    // Generate random discount (3%, 5%, or 10%)
-    const discountOptions = ['3', '5', '10'];
-    const probabilities = [50, 35, 15]; // 3%: 50%, 5%: 35%, 10%: 15%
+    // Generate random discount (1%, 3%, 5%, 7%, 10%, 20%)
+    // %10 ve %20'nin çıkma ihtimali 8 kat daha az
+    const discountOptions = ['1', '3', '5', '7', '10', '20'];
+    const probabilities = [25, 25, 25, 25, 3.125, 3.125]; // %10 ve %20: 8 kat daha az (25/8 = 3.125)
     
     const random = Math.random() * 100;
     let cumulativeProbability = 0;
-    let selectedDiscount = '3';
+    let selectedDiscount = '1';
     
     for (let i = 0; i < discountOptions.length; i++) {
       cumulativeProbability += probabilities[i];

@@ -48,11 +48,11 @@ export default function DiscountWheel({ visible, onClose, onSpinComplete }: Disc
       if (status.alreadySpun && status.existingCode) {
         // Show existing result
         setSpinResult({
-          spinResult: status.spinResult as '3' | '5' | '10',
+          spinResult: status.spinResult as '1' | '3' | '5' | '7' | '10' | '20',
           discountCode: status.existingCode,
           expiresAt: status.expiresAt || '',
           discountType: 'percentage',
-          discountValue: status.spinResult || '3'
+          discountValue: status.spinResult || '1'
         });
       }
     } catch (error) {
@@ -129,18 +129,24 @@ export default function DiscountWheel({ visible, onClose, onSpinComplete }: Disc
 
   const getDiscountColor = (value: string): string => {
     switch (value) {
-      case '3': return '#28a745';
-      case '5': return '#ffc107';
-      case '10': return '#dc3545';
+      case '1': return '#ffc107'; // Sarı
+      case '3': return '#28a745'; // Yeşil
+      case '5': return '#ff6b35'; // Turuncu
+      case '7': return '#dc3545'; // Kırmızı
+      case '10': return '#ffc107'; // Sarı
+      case '20': return '#dc3545'; // Kırmızı
       default: return '#6c757d';
     }
   };
 
   const getDiscountIcon = (value: string): string => {
     switch (value) {
-      case '3': return 'gift';
-      case '5': return 'star';
+      case '1': return 'gift';
+      case '3': return 'star';
+      case '5': return 'diamond';
+      case '7': return 'trophy';
       case '10': return 'diamond';
+      case '20': return 'trophy';
       default: return 'gift';
     }
   };
@@ -205,7 +211,7 @@ export default function DiscountWheel({ visible, onClose, onSpinComplete }: Disc
           ) : (
             <View style={styles.wheelContainer}>
               <Text style={styles.description}>
-                Çarkı çevirin ve %3, %5 veya %10 indirim kazanın!
+                Çarkı çevirin ve %1, %3, %5, %7, %10 veya %20 indirim kazanın!
               </Text>
               
               <View style={styles.wheelWrapper}>
@@ -220,23 +226,47 @@ export default function DiscountWheel({ visible, onClose, onSpinComplete }: Disc
                     }
                   ]}
                 >
-                  <View style={[styles.wheelSection, { backgroundColor: '#28a745' }]}>
-                    <Text style={styles.wheelText}>%3</Text>
-                  </View>
-                  <View style={[styles.wheelSection, { backgroundColor: '#ffc107' }]}>
+                  {/* %5 - Turuncu */}
+                  <View style={[styles.wheelSection, { 
+                    backgroundColor: '#ff6b35',
+                    transform: [{ rotate: '0deg' }]
+                  }]}>
                     <Text style={styles.wheelText}>%5</Text>
                   </View>
-                  <View style={[styles.wheelSection, { backgroundColor: '#dc3545' }]}>
-                    <Text style={styles.wheelText}>%10</Text>
+                  {/* %7 - Kırmızı */}
+                  <View style={[styles.wheelSection, { 
+                    backgroundColor: '#dc3545',
+                    transform: [{ rotate: '60deg' }]
+                  }]}>
+                    <Text style={[styles.wheelText, { transform: [{ rotate: '-60deg' }] }]}>%7</Text>
                   </View>
-                  <View style={[styles.wheelSection, { backgroundColor: '#6c757d' }]}>
-                    <Text style={styles.wheelText}>%3</Text>
+                  {/* %1 - Sarı */}
+                  <View style={[styles.wheelSection, { 
+                    backgroundColor: '#ffc107',
+                    transform: [{ rotate: '120deg' }]
+                  }]}>
+                    <Text style={[styles.wheelText, { transform: [{ rotate: '-120deg' }] }]}>%1</Text>
                   </View>
-                  <View style={[styles.wheelSection, { backgroundColor: '#28a745' }]}>
-                    <Text style={styles.wheelText}>%5</Text>
+                  {/* %7 - Kırmızı */}
+                  <View style={[styles.wheelSection, { 
+                    backgroundColor: '#dc3545',
+                    transform: [{ rotate: '180deg' }]
+                  }]}>
+                    <Text style={[styles.wheelText, { transform: [{ rotate: '-180deg' }] }]}>%7</Text>
                   </View>
-                  <View style={[styles.wheelSection, { backgroundColor: '#ffc107' }]}>
-                    <Text style={styles.wheelText}>%10</Text>
+                  {/* %20 - Kırmızı */}
+                  <View style={[styles.wheelSection, { 
+                    backgroundColor: '#dc3545',
+                    transform: [{ rotate: '240deg' }]
+                  }]}>
+                    <Text style={[styles.wheelText, { transform: [{ rotate: '-240deg' }] }]}>%20</Text>
+                  </View>
+                  {/* %10 - Sarı */}
+                  <View style={[styles.wheelSection, { 
+                    backgroundColor: '#ffc107',
+                    transform: [{ rotate: '300deg' }]
+                  }]}>
+                    <Text style={[styles.wheelText, { transform: [{ rotate: '-300deg' }] }]}>%10</Text>
                   </View>
                 </Animated.View>
                 
@@ -402,6 +432,7 @@ const styles = StyleSheet.create({
     height: '50%',
     justifyContent: 'center',
     alignItems: 'center',
+    transformOrigin: '100% 100%',
   },
   wheelText: {
     fontSize: 18,
@@ -471,3 +502,4 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
 });
+

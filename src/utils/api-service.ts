@@ -1,7 +1,7 @@
 import { getApiBaseUrl, detectBestServer, REMOTE_SERVERS, IP_SERVER_CANDIDATES, DEFAULT_TENANT_API_KEY } from './api-config';
 
 // Dynamic API base URL - will be set based on network detection
-let API_BASE_URL = getApiBaseUrl();
+let currentApiUrl = getApiBaseUrl();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 dakika cache
 const OFFLINE_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 saat offline cache
 
@@ -154,23 +154,23 @@ class ApiService {
       for (const result of results) {
         if (result.isWorking) {
           // Found working API URL
-          API_BASE_URL = result.url;
+          currentApiUrl = result.url;
           return result.url;
         }
       }
     }
 
     // No working remote API URL found, keeping current
-    return API_BASE_URL;
+    return currentApiUrl;
   }
 
   setApiUrl(url: string): void {
-    API_BASE_URL = url;
+    currentApiUrl = url;
     // API URL set
   }
 
   getCurrentApiUrl(): string {
-    return API_BASE_URL;
+    return currentApiUrl;
   }
 
   // Enhanced cache helper methods
@@ -328,7 +328,7 @@ class ApiService {
     }
     
     try {
-      const url = `${API_BASE_URL}${endpoint}`;
+      const url = `${getApiBaseUrl()}${endpoint}`;
       // API Request
 
       const headers: HeadersInit = {
@@ -440,7 +440,7 @@ class ApiService {
         // Attempting API URL auto-detection
         try {
           const newUrl = await this.autoDetectApiUrl();
-          if (newUrl !== API_BASE_URL) {
+          if (newUrl !== currentApiUrl) {
             // Retrying with new URL
             return this.request(endpoint, method, body, retryCount + 1, isOfflineRetry);
           }
@@ -967,7 +967,7 @@ class ApiService {
         // Try auto-detection if health check failed
         try {
           const newUrl = await this.autoDetectApiUrl();
-          if (newUrl !== API_BASE_URL) {
+          if (newUrl !== currentApiUrl) {
             // Test again with new URL
             const retryResult = await this.request<boolean>('/health');
             if (retryResult.success) {

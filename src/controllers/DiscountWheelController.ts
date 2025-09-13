@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface DiscountWheelResult {
-  spinResult: '3' | '5' | '10';
+  spinResult: '1' | '3' | '5' | '7' | '10' | '20';
   discountCode: string;
   expiresAt: string;
   discountType: 'percentage';
