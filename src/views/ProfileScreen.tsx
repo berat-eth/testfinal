@@ -304,6 +304,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       return;
     }
 
+    // Kayıt olma sırasında sadece state'i güncelle
+    if (!isLogin) {
+      setBirthDate(newBirthDate);
+      return;
+    }
+
+    // Giriş yapmış kullanıcı için profil güncelleme
     try {
       const result = await UserController.updateProfileNew({
         birthDate: newBirthDate
