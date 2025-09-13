@@ -130,7 +130,6 @@ export default function MyCampaignsScreen() {
 
     try {
       const platform = taskId.split('-')[0];
-      const shareUrl = SocialSharingController.generateShareUrl(platform);
       
       // Genel kamp ürünleri paylaşımı
       const { Share } = require('react-native');
