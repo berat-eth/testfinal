@@ -15,6 +15,7 @@ const IyzicoService = require('./services/iyzico-service');
 const WhatsAppService = require('./services/whatsapp-service');
 const { createDatabaseSchema } = require('./database-schema');
 const userDataRoutes = require('./routes/user-data');
+const userSpecificDataRoutes = require('./routes/user-specific-data');
 const helmet = require('helmet');
 const hpp = require('hpp');
 const rateLimit = require('express-rate-limit');
@@ -371,6 +372,9 @@ app.get('/api/health', async (req, res) => {
 
 // User Data Routes
 app.use('/api/user-data', userDataRoutes);
+
+// User Specific Data Routes
+app.use('/api/user-specific', userSpecificDataRoutes);
 
 // Return Requests Endpoints
 

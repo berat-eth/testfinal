@@ -351,6 +351,221 @@
       "timestamp": "2025-09-13T09:09:13.099Z",
       "date": "2025-09-13",
       "time": "12:09:13"
+    },
+    {
+      "id": 1757755680063.1638,
+      "userId": 1,
+      "activityType": "page_view_analytics",
+      "activityData": {
+        "screenName": "ProductDetail",
+        "startTime": 1757755635062,
+        "endTime": 1757755680062,
+        "duration": 45000,
+        "scrollDepth": 1200,
+        "maxScrollDepth": 1500,
+        "scrollPercentage": 80,
+        "viewportHeight": 800,
+        "contentHeight": 2000
+      },
+      "timestamp": "2025-09-13T09:28:00.063Z",
+      "date": "2025-09-13",
+      "time": "12:28:00"
+    },
+    {
+      "id": 1757755680065.046,
+      "userId": 1,
+      "activityType": "click_heatmap",
+      "activityData": {
+        "clicks": [
+          {
+            "screenName": "ProductDetail",
+            "elementType": "button",
+            "elementId": "add-to-cart",
+            "x": 200,
+            "y": 300,
+            "timestamp": 1757755650064
+          },
+          {
+            "screenName": "ProductDetail",
+            "elementType": "image",
+            "elementId": "product-image-1",
+            "x": 150,
+            "y": 200,
+            "timestamp": 1757755655065
+          },
+          {
+            "screenName": "ProductDetail",
+            "elementType": "link",
+            "elementId": "product-reviews",
+            "x": 300,
+            "y": 400,
+            "timestamp": 1757755660065
+          }
+        ],
+        "timestamp": 1757755680065
+      },
+      "timestamp": "2025-09-13T09:28:00.065Z",
+      "date": "2025-09-13",
+      "time": "12:28:00"
+    },
+    {
+      "id": 1757755680066.8406,
+      "userId": 1,
+      "activityType": "cart_abandonment",
+      "activityData": {
+        "cartId": "cart_123_001",
+        "userId": 1,
+        "abandonedAt": 1757755680066,
+        "timeInCart": 15,
+        "cartValue": 299.98,
+        "itemCount": 2,
+        "lastAction": "checkout_start",
+        "abandonmentStage": "checkout_start",
+        "products": [
+          {
+            "productId": 123,
+            "productName": "Erkek Tişört - Mavi",
+            "price": 89.99,
+            "quantity": 2,
+            "variations": {
+              "color": "Mavi",
+              "size": "L"
+            }
+          }
+        ]
+      },
+      "timestamp": "2025-09-13T09:28:00.066Z",
+      "date": "2025-09-13",
+      "time": "12:28:00"
+    },
+    {
+      "id": 1757755680067.1133,
+      "userId": 1,
+      "activityType": "product_comparison",
+      "activityData": {
+        "userId": 1,
+        "comparedProducts": [
+          {
+            "productId": 123,
+            "productName": "Erkek Tişört - Mavi",
+            "price": 89.99,
+            "category": "Giyim",
+            "brand": "Huglu"
+          },
+          {
+            "productId": 124,
+            "productName": "Erkek Tişört - Kırmızı",
+            "price": 79.99,
+            "category": "Giyim",
+            "brand": "Huglu"
+          }
+        ],
+        "comparisonDuration": 120000,
+        "decisionMade": true,
+        "selectedProductId": 123,
+        "comparisonTimestamp": 1757755560067
+      },
+      "timestamp": "2025-09-13T09:28:00.067Z",
+      "date": "2025-09-13",
+      "time": "12:28:00"
+    },
+    {
+      "id": 1757755680068.1982,
+      "userId": 1,
+      "activityType": "performance_metrics",
+      "activityData": {
+        "userId": 1,
+        "screenName": "ProductDetail",
+        "loadTime": 1200,
+        "renderTime": 800,
+        "memoryUsage": 45.2,
+        "networkLatency": 150,
+        "errorCount": 0,
+        "crashCount": 0,
+        "timestamp": 1757755680068
+      },
+      "timestamp": "2025-09-13T09:28:00.068Z",
+      "date": "2025-09-13",
+      "time": "12:28:00"
+    },
+    {
+      "id": 1757755680071.1516,
+      "userId": 1,
+      "activityType": "network_metrics",
+      "activityData": {
+        "userId": 1,
+        "requestUrl": "/api/products/123",
+        "requestMethod": "GET",
+        "responseTime": 250,
+        "responseSize": 2048,
+        "statusCode": 200,
+        "networkType": "wifi",
+        "connectionSpeed": "fast",
+        "timestamp": 1757755680070
+      },
+      "timestamp": "2025-09-13T09:28:00.071Z",
+      "date": "2025-09-13",
+      "time": "12:28:00"
+    },
+    {
+      "id": 1757755680072.1428,
+      "userId": 1,
+      "activityType": "content_share",
+      "activityData": {
+        "userId": 1,
+        "contentType": "product",
+        "contentId": "123",
+        "contentTitle": "Erkek Tişört - Mavi",
+        "sharePlatform": "instagram",
+        "shareMethod": "button",
+        "shareTimestamp": 1757755680072,
+        "shareSuccess": true
+      },
+      "timestamp": "2025-09-13T09:28:00.072Z",
+      "date": "2025-09-13",
+      "time": "12:28:00"
+    },
+    {
+      "id": 1757755680073.5828,
+      "userId": 1,
+      "activityType": "product_review",
+      "activityData": {
+        "userId": 1,
+        "productId": 123,
+        "productName": "Erkek Tişört - Mavi",
+        "reviewType": "rating",
+        "rating": 5,
+        "reviewText": "Çok kaliteli ve rahat bir tişört. Kesinlikle tavsiye ederim!",
+        "reviewLength": 50,
+        "hasPhotos": true,
+        "hasVideos": false,
+        "reviewTimestamp": 1757755680073,
+        "helpfulVotes": 3,
+        "reportCount": 0
+      },
+      "timestamp": "2025-09-13T09:28:00.073Z",
+      "date": "2025-09-13",
+      "time": "12:28:00"
+    },
+    {
+      "id": 1757755680075.99,
+      "userId": 1,
+      "activityType": "content_consumption",
+      "activityData": {
+        "userId": 1,
+        "contentId": "blog_001",
+        "contentType": "blog",
+        "contentTitle": "Yaz Modası Rehberi",
+        "contentCategory": "Fashion",
+        "consumptionType": "read",
+        "consumptionDuration": 300,
+        "consumptionPercentage": 85,
+        "interactionCount": 2,
+        "contentTimestamp": 1757755680074
+      },
+      "timestamp": "2025-09-13T09:28:00.075Z",
+      "date": "2025-09-13",
+      "time": "12:28:00"
     }
   ]
 }
