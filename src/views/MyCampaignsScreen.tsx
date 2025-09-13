@@ -118,7 +118,7 @@ export default function MyCampaignsScreen() {
     <View key={code.id} style={styles.discountCard}>
       <View style={styles.discountHeader}>
         <View style={styles.discountIcon}>
-          <Ionicons name="pricetag" size={20} color="white" />
+          <Ionicons name="pricetag-outline" size={20} color="white" />
         </View>
         <View style={styles.discountInfo}>
           <Text style={styles.discountCode}>

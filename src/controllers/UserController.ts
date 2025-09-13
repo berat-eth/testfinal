@@ -2,6 +2,8 @@ import { UserModel } from '../models/User';
 import { User } from '../utils/types';
 import { apiService } from '../utils/api-service';
 import { getDatabase } from '../utils/database';
+import { validateBirthDate } from '../utils/ageValidation';
+import { userDataService } from '../services/UserDataService';
 
 export class UserController {
   // Simple local storage for user preferences
@@ -67,8 +69,13 @@ export class UserController {
     email: string;
     password: string;
     phone: string;
-    birthDate: string; // ISO format YYYY-MM-DD
+    birthDate: string; // DD-MM-YYYY format
     address?: string;
+    privacyAccepted: boolean;
+    termsAccepted: boolean;
+    marketingEmail: boolean;
+    marketingSms: boolean;
+    marketingPhone: boolean;
   }): Promise<{ success: boolean; message: string; userId?: number }> {
     try {
       console.log('🔄 Registering new user:', userData.email);
@@ -90,9 +97,19 @@ export class UserController {
         return { success: false, message: 'Geçerli bir telefon numarası giriniz' };
       }
 
-      // Doğum tarihi zorunlu ve geçerli
-      if (!userData.birthDate || isNaN(Date.parse(userData.birthDate))) {
-        return { success: false, message: 'Geçerli bir doğum tarihi giriniz' };
+      // Sözleşme kontrolleri
+      if (!userData.privacyAccepted) {
+        return { success: false, message: 'Gizlilik sözleşmesini kabul etmelisiniz' };
+      }
+      
+      if (!userData.termsAccepted) {
+        return { success: false, message: 'Kullanım sözleşmesini kabul etmelisiniz' };
+      }
+
+      // Doğum tarihi zorunlu ve geçerli (18 yaş kontrolü ile)
+      const birthDateValidation = validateBirthDate(userData.birthDate);
+      if (!birthDateValidation.isValid) {
+        return { success: false, message: birthDateValidation.message };
       }
 
       // API'ye kayıt isteği gönder
@@ -102,7 +119,12 @@ export class UserController {
         password: userData.password,
         phone: userData.phone,
         birthDate: userData.birthDate,
-        address: userData.address || ''
+        address: userData.address || '',
+        privacyAccepted: userData.privacyAccepted,
+        termsAccepted: userData.termsAccepted,
+        marketingEmail: userData.marketingEmail,
+        marketingSms: userData.marketingSms,
+        marketingPhone: userData.marketingPhone
       });
 
       if (response.success && response.data?.userId) {
@@ -112,6 +134,35 @@ export class UserController {
         await this.setUserPreference('user_id', response.data.userId);
         await this.setUserPreference('user_email', userData.email);
         await this.setUserPreference('user_name', userData.name);
+        
+        // Kullanıcı verilerini sunucuya kaydet
+        try {
+          await userDataService.saveUserData({
+            userId: response.data.userId,
+            name: userData.name,
+            surname: userData.name.split(' ').slice(1).join(' ') || ''
+          });
+          
+          // Kayıt aktivitesini logla
+          await userDataService.logUserActivity({
+            userId: response.data.userId,
+            activityType: 'user_registered',
+            activityData: {
+              email: userData.email,
+              phone: userData.phone,
+              birthDate: userData.birthDate,
+              privacyAccepted: userData.privacyAccepted,
+              termsAccepted: userData.termsAccepted,
+              marketingConsent: {
+                email: userData.marketingEmail,
+                sms: userData.marketingSms,
+                phone: userData.marketingPhone
+              }
+            }
+          });
+        } catch (dataError) {
+          console.warn('⚠️ Kullanıcı verisi sunucuya kaydedilemedi:', dataError);
+        }
         
         return { success: true, message: 'Kayıt başarılı', userId: response.data.userId };
       } else {
@@ -144,6 +195,15 @@ export class UserController {
         const user = this.mapApiUserToAppUser(response.data);
         console.log(`✅ User login successful: ${user.id}`);
         
+        // Yaş kontrolü - 18 yaşının altındaki kullanıcılar giriş yapamaz
+        if (user.birthDate) {
+          const validation = validateBirthDate(user.birthDate);
+          if (!validation.isValid) {
+            console.log(`❌ User under 18 years old: ${user.email}`);
+            return { success: false, message: validation.message };
+          }
+        }
+        
         // Save user data locally
         await this.setUserPreference('user_id', user.id);
         await this.setUserPreference('user_email', user.email);
@@ -151,6 +211,28 @@ export class UserController {
         await this.setUserPreference('user_phone', user.phone);
         await this.setUserPreference('user_address', user.address);
         await this.setUserPreference('last_login', new Date().toISOString());
+        
+        // Kullanıcı verilerini sunucuya kaydet
+        try {
+          await userDataService.saveUserData({
+            userId: user.id,
+            name: user.name,
+            surname: user.name.split(' ').slice(1).join(' ') || ''
+          });
+          
+          // Giriş aktivitesini logla
+          await userDataService.logUserActivity({
+            userId: user.id,
+            activityType: 'user_login',
+            activityData: {
+              email: user.email,
+              phone: user.phone,
+              loginTime: new Date().toISOString()
+            }
+          });
+        } catch (dataError) {
+          console.warn('⚠️ Kullanıcı verisi sunucuya kaydedilemedi:', dataError);
+        }
         
         return { success: true, message: 'Giriş başarılı', user };
       } else {
@@ -398,6 +480,7 @@ export class UserController {
         password: apiUser.password || '',
         phone: apiUser.phone || '',
         address: apiUser.address || '',
+        birthDate: apiUser.birthDate || apiUser.birth_date || undefined,
         createdAt: apiUser.createdAt || new Date().toISOString()
       };
     } catch (error) {
@@ -744,7 +827,7 @@ export class UserController {
       // Check if user exists before logging activity
       const userExists = await db.getFirstAsync('SELECT id FROM users WHERE id = ?', [userId]);
       if (!userExists) {
-        console.warn(`⚠️ Cannot log activity for non-existent user: ${userId}`);
+        // Silently skip logging for non-existent users
         return;
       }
       
@@ -759,6 +842,21 @@ export class UserController {
           userAgent || null
         ]
       );
+
+      // Aktiviteyi sunucuya da gönder
+      try {
+        await userDataService.logUserActivity({
+          userId: userId,
+          activityType: action,
+          activityData: {
+            ...details,
+            ipAddress: ipAddress,
+            userAgent: userAgent
+          }
+        });
+      } catch (serverError) {
+        console.warn('⚠️ Aktivite sunucuya gönderilemedi:', serverError);
+      }
     } catch (error) {
       console.error('❌ Error logging user activity:', error);
       // Don't throw the error to prevent app crashes
@@ -772,7 +870,7 @@ export class UserController {
       // Check if user exists
       const userExists = await db.getFirstAsync('SELECT id FROM users WHERE id = ?', [userId]);
       if (!userExists) {
-        console.warn(`⚠️ Cannot get activity log for non-existent user: ${userId}`);
+        // Silently return empty array for non-existent users
         return [];
       }
       
@@ -793,9 +891,18 @@ export class UserController {
     email?: string;
     phone?: string;
     address?: string;
+    birthDate?: string;
   }): Promise<{ success: boolean; message: string }> {
     try {
       console.log('👤 Updating profile with data:', data);
+      
+      // Doğum tarihi yaş kontrolü (eğer doğum tarihi güncelleniyorsa)
+      if (data.birthDate) {
+        const birthDateValidation = validateBirthDate(data.birthDate);
+        if (!birthDateValidation.isValid) {
+          return { success: false, message: birthDateValidation.message };
+        }
+      }
       
       // Get current user ID
       const currentUser = await this.getCurrentUser();

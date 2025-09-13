@@ -21,6 +21,7 @@ export const FlashDealsHeader: React.FC<FlashDealsHeaderProps> = ({
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -30,19 +31,16 @@ export const FlashDealsHeader: React.FC<FlashDealsHeaderProps> = ({
         <View style={styles.content}>
           <View style={styles.titleContainer}>
             <View style={styles.iconContainer}>
-              <Icon name="flash-on" size={28} color="white" />
+              <Icon name="flash-on" size={16} color="white" />
             </View>
             <Text style={styles.title}>⚡ Flash İndirimler</Text>
           </View>
           <View style={styles.timerContainer}>
             <View style={styles.timerIconContainer}>
-              <Icon name="timer" size={18} color="white" />
+              <Icon name="timer" size={12} color="white" />
             </View>
-            <Text style={styles.timerText}>Bitiş: {formatHMS(remainingTime)}</Text>
+            <Text style={styles.timerText}>{formatHMS(remainingTime)}</Text>
           </View>
-          <Text style={styles.subtitle}>
-            🎯 {campaignCount} aktif kampanya • Sınırlı süre!
-          </Text>
         </View>
         <View style={styles.decorativeElements}>
           <View style={styles.circle1} />
@@ -56,83 +54,86 @@ export const FlashDealsHeader: React.FC<FlashDealsHeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   gradient: {
-    padding: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     marginHorizontal: 16,
-    borderRadius: 20,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     position: 'relative',
     overflow: 'hidden',
   },
   content: {
     position: 'relative',
     zIndex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    flex: 1,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: 'white',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  timerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  timerIconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
   },
-  timerText: {
-    fontSize: 16,
+  title: {
+    fontSize: 18,
     fontWeight: '700',
     color: 'white',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.95)',
-    fontWeight: '600',
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
+  },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  timerIconContainer: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  timerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+    marginLeft: 8,
   },
   decorativeElements: {
     position: 'absolute',
@@ -144,29 +145,29 @@ const styles = StyleSheet.create({
   },
   circle1: {
     position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    top: -20,
-    right: -20,
-  },
-  circle2: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    bottom: -10,
-    left: -10,
-  },
-  circle3: {
-    position: 'absolute',
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    top: -10,
+    right: -10,
+  },
+  circle2: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    bottom: -5,
+    left: -5,
+  },
+  circle3: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     top: '50%',
-    right: 20,
+    right: 15,
   },
 });

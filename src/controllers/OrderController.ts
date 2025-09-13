@@ -4,6 +4,7 @@ import { UserController } from './UserController';
 import { Order, OrderStatus } from '../utils/types';
 import { apiService } from '../utils/api-service';
 import { addToOfflineQueue, getOfflineQueue, removeFromOfflineQueue, OfflineQueueItem } from '../utils/database';
+import { detailedActivityLogger } from '../services/DetailedActivityLogger';
 
 export class OrderController {
   static async createOrder(
@@ -93,6 +94,54 @@ export class OrderController {
 
       if (response.success && response.data?.orderId) {
         console.log(`✅ Order created successfully: ${response.data.orderId}`);
+        
+        // Detaylı sipariş oluşturma logu
+        try {
+          await detailedActivityLogger.logOrderStarted({
+            orderId: response.data.orderId.toString(),
+            orderNumber: (response.data as any).orderNumber,
+            totalAmount: totalAmount,
+            productCount: cartItems.length,
+            products: cartItems.map(item => ({
+              productId: item.productId,
+              productName: item.product?.name || `Ürün #${item.productId}`,
+              quantity: item.quantity,
+              price: item.product?.price || 0,
+              variations: item.selectedVariations ? this.extractVariationsFromCartItem(item) : undefined,
+              variationString: item.variationString || ''
+            })),
+            paymentMethod: paymentMethod,
+            paymentStatus: 'pending',
+            orderStatus: 'pending',
+            shippingAddress: shippingAddress,
+            billingAddress: fullAddress || shippingAddress,
+            action: 'started'
+          });
+
+          // Sipariş tamamlama logu
+          await detailedActivityLogger.logOrderCompleted({
+            orderId: response.data.orderId.toString(),
+            orderNumber: (response.data as any).orderNumber,
+            totalAmount: totalAmount,
+            productCount: cartItems.length,
+            products: cartItems.map(item => ({
+              productId: item.productId,
+              productName: item.product?.name || `Ürün #${item.productId}`,
+              quantity: item.quantity,
+              price: item.product?.price || 0,
+              variations: item.selectedVariations ? this.extractVariationsFromCartItem(item) : undefined,
+              variationString: item.variationString || ''
+            })),
+            paymentMethod: paymentMethod,
+            paymentStatus: 'completed',
+            orderStatus: 'confirmed',
+            shippingAddress: shippingAddress,
+            billingAddress: fullAddress || shippingAddress,
+            action: 'completed'
+          });
+        } catch (logError) {
+          console.warn('⚠️ Order logging failed:', logError);
+        }
         
         // Sipariş oluşturulduktan sonra sepeti temizle
         await CartController.clearCart(userId);
@@ -485,5 +534,21 @@ export class OrderController {
         items: []
       };
     }
+  }
+
+  // Helper function to extract variations from cart item
+  private static extractVariationsFromCartItem(cartItem: any): { [key: string]: string } {
+    const result: { [key: string]: string } = {};
+    
+    if (cartItem.selectedVariations && typeof cartItem.selectedVariations === 'object') {
+      Object.keys(cartItem.selectedVariations).forEach(key => {
+        const variation = cartItem.selectedVariations[key];
+        if (variation && variation.name && variation.value) {
+          result[variation.name.toLowerCase()] = variation.value;
+        }
+      });
+    }
+
+    return result;
   }
 }

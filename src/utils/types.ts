@@ -9,6 +9,7 @@ export interface ProductVariation {
 export interface ProductVariationOption {
   id: number;
   variationId: number;
+  name: string; // e.g., "Size", "Color", "Material"
   value: string; // e.g., "XL", "Red", "Cotton"
   priceModifier: number; // Additional cost for this option
   stock: number;
@@ -33,6 +34,10 @@ export interface Product {
   lastUpdated?: string; // API'den gelen son güncelleme tarihi
   externalId?: string; // Dış sistem ID'si
   source?: string; // Veri kaynağı
+  discountAmount?: number; // İndirim miktarı
+  originalPrice?: number; // Orijinal fiyat
+  finalPrice?: number; // İndirimli fiyat
+  variationString?: string; // Varyasyon string'i
 }
 
 // Review Types
@@ -54,6 +59,7 @@ export interface User {
   password: string;
   phone: string;
   address: string;
+  birthDate?: string; // DD-MM-YYYY formatında doğum tarihi
   createdAt: string;
 }
 

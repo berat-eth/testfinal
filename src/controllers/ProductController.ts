@@ -3,6 +3,7 @@ import { Product, ProductVariationOption } from '../utils/types';
 import { XmlProductService, XmlProduct } from '../services/XmlProductService';
 import { apiService } from '../utils/api-service';
 import { CacheService, CacheTTL } from '../services/CacheService';
+import { detailedActivityLogger } from '../services/DetailedActivityLogger';
 
 export class ProductController {
   // Enhanced product fetching with pagination and better offline support
@@ -77,6 +78,25 @@ export class ProductController {
       if (response.success && response.data) {
         console.log(`✅ API returned product: ${response.data.name}`);
         const product = this.mapApiProductToAppProduct(response.data);
+        
+        // Detaylı ürün görüntüleme logu
+        try {
+          await detailedActivityLogger.logProductDetailViewed({
+            productId: product.id,
+            productName: product.name,
+            productPrice: product.price,
+            productCategory: product.category || 'Bilinmeyen',
+            productBrand: product.brand || 'Bilinmeyen',
+            productImage: product.images?.[0] || '',
+            variations: product.variations ? this.extractVariations(product.variations) : undefined,
+            variationString: product.variationString,
+            discountAmount: product.discountAmount,
+            originalPrice: product.originalPrice,
+            finalPrice: product.finalPrice || product.price
+          });
+        } catch (logError) {
+          console.warn('⚠️ Product detail view logging failed:', logError);
+        }
         
         return product;
       }
@@ -573,5 +593,22 @@ export class ProductController {
         source: 'Error'
       };
     }
+  }
+
+  // Helper function to extract variations from product variations
+  private static extractVariations(variations: ProductVariationOption[]): { [key: string]: string } {
+    const result: { [key: string]: string } = {};
+    
+    if (!variations || !Array.isArray(variations)) {
+      return result;
+    }
+
+    variations.forEach(variation => {
+      if (variation.name && variation.value) {
+        result[variation.name.toLowerCase()] = variation.value;
+      }
+    });
+
+    return result;
   }
 }

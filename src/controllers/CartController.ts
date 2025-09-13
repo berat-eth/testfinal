@@ -3,6 +3,7 @@ import { ProductController } from './ProductController';
 import { CartItem, ProductVariationOption } from '../utils/types';
 import { apiService } from '../utils/api-service';
 import { addToOfflineQueue, getOfflineQueue, removeFromOfflineQueue } from '../utils/database';
+import { detailedActivityLogger } from '../services/DetailedActivityLogger';
 
 export class CartController {
   static async addToCart(
@@ -53,6 +54,30 @@ export class CartController {
 
       if (response.success) {
         // Product added to cart successfully
+        
+        // Detaylı sepet ekleme logu
+        try {
+          const product = await ProductController.getProductById(productId);
+          if (product) {
+            await detailedActivityLogger.logCartItemAdded({
+              productId: product.id,
+              productName: product.name,
+              productPrice: product.price,
+              quantity: quantity,
+              variations: selectedVariations ? this.extractVariationsFromSelected(selectedVariations) : undefined,
+              variationString: this.createVariationString(selectedVariations),
+              totalPrice: product.price * quantity,
+              cartItemId: (response.data as any)?.cartItemId?.toString(),
+              discountAmount: product.discountAmount,
+              originalPrice: product.originalPrice,
+              finalPrice: product.finalPrice || product.price,
+              action: 'added'
+            });
+          }
+        } catch (logError) {
+          console.warn('⚠️ Cart add logging failed:', logError);
+        }
+        
         return { success: true, message: 'Ürün sepete eklendi' };
       } else {
         // Failed to add to cart
@@ -88,6 +113,28 @@ export class CartController {
       
       if (response.success) {
         // Product removed from cart successfully
+        
+        // Detaylı sepet çıkarma logu
+        try {
+          // Cart item bilgilerini al (response'dan veya cache'den)
+          const cartItem = (response.data as any)?.cartItem;
+          if (cartItem) {
+            await detailedActivityLogger.logCartItemRemoved({
+              productId: cartItem.productId,
+              productName: cartItem.productName || 'Bilinmeyen Ürün',
+              productPrice: cartItem.productPrice || 0,
+              quantity: cartItem.quantity || 1,
+              variations: cartItem.variations,
+              variationString: cartItem.variationString || '',
+              totalPrice: (cartItem.productPrice || 0) * (cartItem.quantity || 1),
+              cartItemId: cartItemId.toString(),
+              action: 'removed'
+            });
+          }
+        } catch (logError) {
+          console.warn('⚠️ Cart remove logging failed:', logError);
+        }
+        
         return { success: true, message: 'Ürün sepetten kaldırıldı' };
       } else {
         // Failed to remove from cart
@@ -126,6 +173,27 @@ export class CartController {
       
       if (response.success) {
         // Cart quantity updated successfully
+        
+        // Detaylı sepet güncelleme logu
+        try {
+          const cartItem = (response.data as any)?.cartItem;
+          if (cartItem) {
+            await detailedActivityLogger.logCartItemUpdated({
+              productId: cartItem.productId,
+              productName: cartItem.productName || 'Bilinmeyen Ürün',
+              productPrice: cartItem.productPrice || 0,
+              quantity: quantity,
+              variations: cartItem.variations,
+              variationString: cartItem.variationString || '',
+              totalPrice: (cartItem.productPrice || 0) * quantity,
+              cartItemId: cartItemId.toString(),
+              action: 'updated'
+            });
+          }
+        } catch (logError) {
+          console.warn('⚠️ Cart update logging failed:', logError);
+        }
+        
         return { success: true, message: 'Miktar güncellendi' };
       } else {
         // Failed to update quantity
@@ -420,5 +488,34 @@ export class CartController {
         product: undefined
       };
     }
+  }
+
+  // Helper function to extract variations from selected variations
+  private static extractVariationsFromSelected(selectedVariations: { [key: string]: ProductVariationOption }): { [key: string]: string } {
+    const result: { [key: string]: string } = {};
+    
+    Object.keys(selectedVariations).forEach(key => {
+      const variation = selectedVariations[key];
+      if (variation && variation.name && variation.value) {
+        result[variation.name.toLowerCase()] = variation.value;
+      }
+    });
+
+    return result;
+  }
+
+  // Helper function to create variation string
+  private static createVariationString(selectedVariations?: { [key: string]: ProductVariationOption }): string {
+    if (!selectedVariations) return '';
+
+    const variations: string[] = [];
+    Object.keys(selectedVariations).forEach(key => {
+      const variation = selectedVariations[key];
+      if (variation && variation.name && variation.value) {
+        variations.push(`${variation.name}: ${variation.value}`);
+      }
+    });
+
+    return variations.join(', ');
   }
 }

@@ -74,7 +74,7 @@ export class CartModel {
         productId: item.productId,
         quantity: item.quantity,
         userId: item.userId,
-        selectedVariations: item.selectedVariations ? JSON.parse(item.selectedVariations) : undefined,
+        selectedVariations: item.selectedVariations && item.selectedVariations !== 'undefined' ? JSON.parse(item.selectedVariations) : undefined,
         variationString: item.variationString,
         product: {
           id: item.productId,

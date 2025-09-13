@@ -25,6 +25,11 @@ import { LoadingIndicator } from '../components/LoadingIndicator';
 import { useRealTimeUpdates } from '../hooks/useRealTimeUpdates';
 import { RealTimeStatusBar } from '../components/RealTimeStatusBar';
 import { SecureStorage } from '../utils/secure-storage';
+import { DatePicker } from '../components/DatePicker';
+import { validateBirthDate } from '../utils/ageValidation';
+import { Checkbox } from '../components/Checkbox';
+import { AgreementModal } from '../components/AgreementModal';
+import { PRIVACY_POLICY_TEXT, TERMS_OF_SERVICE_TEXT } from '../utils/privacyPolicy';
 
 interface ProfileScreenProps {
   navigation: any;
@@ -127,6 +132,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [socialLoading, setSocialLoading] = useState(false);
+  
+  // Sözleşme ve izin state'leri
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [marketingEmail, setMarketingEmail] = useState(false);
+  const [marketingSms, setMarketingSms] = useState(false);
+  const [marketingPhone, setMarketingPhone] = useState(false);
+  
+  // Modal state'leri
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -209,6 +225,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const handleLogin = async () => {
     const result = await UserController.login(email, password);
     if (result.success && result.user) {
+      // Giriş yapan kullanıcının yaş kontrolü
+      if (result.user && 'birthDate' in result.user && result.user.birthDate) {
+        const validation = validateBirthDate(result.user.birthDate);
+        if (!validation.isValid) {
+          Alert.alert('Erişim Engellendi', validation.message);
+          await UserController.logout(); // Kullanıcıyı çıkış yaptır
+          return;
+        }
+      }
+      
       await loadUserData();
       setEmail('');
       setPassword('');
@@ -219,6 +245,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   };
 
   const handleRegister = async () => {
+    // Zorunlu sözleşme kontrolleri
+    if (!privacyAccepted) {
+      Alert.alert('Hata', 'Gizlilik sözleşmesini kabul etmelisiniz');
+      return;
+    }
+    
+    if (!termsAccepted) {
+      Alert.alert('Hata', 'Kullanım sözleşmesini kabul etmelisiniz');
+      return;
+    }
+
+    // Doğum tarihi yaş kontrolü
+    if (birthDate) {
+      const validation = validateBirthDate(birthDate);
+      if (!validation.isValid) {
+        Alert.alert('Hata', validation.message);
+        return;
+      }
+    }
+
     const result = await UserController.register({
       name,
       email,
@@ -226,6 +272,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       phone,
       birthDate,
       address,
+      privacyAccepted,
+      termsAccepted,
+      marketingEmail,
+      marketingSms,
+      marketingPhone,
     });
 
     if (result.success) {
@@ -234,8 +285,39 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       setName('');
       setPhone('');
       setAddress('');
+      setBirthDate('');
+      setPrivacyAccepted(false);
+      setTermsAccepted(false);
+      setMarketingEmail(false);
+      setMarketingSms(false);
+      setMarketingPhone(false);
     } else {
       Alert.alert('Hata', result.message);
+    }
+  };
+
+  const handleBirthDateUpdate = async (newBirthDate: string) => {
+    // Yaş kontrolü yap
+    const validation = validateBirthDate(newBirthDate);
+    if (!validation.isValid) {
+      Alert.alert('Hata', validation.message);
+      return;
+    }
+
+    try {
+      const result = await UserController.updateProfileNew({
+        birthDate: newBirthDate
+      });
+
+      if (result.success) {
+        setBirthDate(newBirthDate);
+        Alert.alert('Başarılı', 'Doğum tarihi güncellendi');
+      } else {
+        Alert.alert('Hata', result.message);
+      }
+    } catch (error) {
+      console.error('Doğum tarihi güncelleme hatası:', error);
+      Alert.alert('Hata', 'Doğum tarihi güncellenirken bir hata oluştu');
     }
   };
 
@@ -443,18 +525,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                         </View>
                       </View>
 
-                      <View style={styles.modernInputContainer}>
-                        <View style={styles.modernInputWrapper}>
-                          <Icon name="cake" size={20} color="#6b7280" style={styles.modernInputIcon} />
-                          <TextInput
-                            style={styles.modernInput}
-                            placeholder="Doğum Tarihi (YYYY-MM-DD) - Zorunlu"
-                            placeholderTextColor="#9ca3af"
-                            value={birthDate}
-                            onChangeText={setBirthDate}
-                          />
-                        </View>
-                      </View>
+                      <DatePicker
+                        value={birthDate}
+                        onDateChange={handleBirthDateUpdate}
+                        placeholder="Gün-Ay-Yıl seçin - Zorunlu"
+                      />
 
                       <View style={styles.modernInputContainer}>
                         <View style={[styles.modernInputWrapper, styles.modernTextAreaWrapper]}>
@@ -469,6 +544,52 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                             numberOfLines={3}
                           />
                         </View>
+                      </View>
+
+                      {/* Sözleşme ve İzinler */}
+                      <View style={styles.agreementsContainer}>
+                        <Text style={styles.agreementsTitle}>Sözleşme ve İzinler</Text>
+                        
+                        <Checkbox
+                          checked={privacyAccepted}
+                          onPress={() => setPrivacyAccepted(!privacyAccepted)}
+                          label="Gizlilik Sözleşmesi'ni okudum ve kabul ediyorum"
+                          required={true}
+                          linkText="Gizlilik Sözleşmesi'ni oku"
+                          onLinkPress={() => setPrivacyModalVisible(true)}
+                        />
+
+                        <Checkbox
+                          checked={termsAccepted}
+                          onPress={() => setTermsAccepted(!termsAccepted)}
+                          label="Kullanım Sözleşmesi'ni okudum ve kabul ediyorum"
+                          required={true}
+                          linkText="Kullanım Sözleşmesi'ni oku"
+                          onLinkPress={() => setTermsModalVisible(true)}
+                        />
+
+                        <Text style={styles.marketingTitle}>Pazarlama İzinleri</Text>
+                        <Text style={styles.marketingSubtitle}>
+                          Aşağıdaki seçeneklerden istediğinizi işaretleyerek pazarlama iletişimlerini alabilirsiniz:
+                        </Text>
+
+                        <Checkbox
+                          checked={marketingEmail}
+                          onPress={() => setMarketingEmail(!marketingEmail)}
+                          label="E-posta ile pazarlama iletişimlerini almak istiyorum"
+                        />
+
+                        <Checkbox
+                          checked={marketingSms}
+                          onPress={() => setMarketingSms(!marketingSms)}
+                          label="SMS ile pazarlama iletişimlerini almak istiyorum"
+                        />
+
+                        <Checkbox
+                          checked={marketingPhone}
+                          onPress={() => setMarketingPhone(!marketingPhone)}
+                          label="Telefon ile pazarlama iletişimlerini almak istiyorum"
+                        />
                       </View>
                 </>
               )}
@@ -552,6 +673,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+        
+        {/* Sözleşme Modal'ları */}
+        <AgreementModal
+          visible={privacyModalVisible}
+          onClose={() => setPrivacyModalVisible(false)}
+          title="Gizlilik Sözleşmesi"
+          content={PRIVACY_POLICY_TEXT}
+        />
+        
+        <AgreementModal
+          visible={termsModalVisible}
+          onClose={() => setTermsModalVisible(false)}
+          title="Kullanım Sözleşmesi"
+          content={TERMS_OF_SERVICE_TEXT}
+        />
       </SafeAreaView>
     );
   }
@@ -671,7 +807,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           {/* İndirim Kodlarım */}
           <TouchableOpacity style={styles.modernMenuItem} onPress={() => navigation.navigate('MyDiscountCodes')}>
             <View style={styles.simpleMenuIcon}>
-              <Icon name="pricetag" size={24} color="#6b7280" />
+              <Icon name="local-offer" size={24} color="#6b7280" />
             </View>
             <View style={styles.modernMenuContent}>
               <Text style={styles.modernMenuTitle}>İndirim Kodlarım</Text>
@@ -770,7 +906,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               <ProfileIcons.store color="#6b7280" />
             </View>
             <View style={styles.modernMenuContent}>
-              <Text style={styles.modernMenuTitle}>Mağazada Bul</Text>
+              <Text style={styles.modernMenuTitle}>Fiziki Mağazalarımız</Text>
               <Text style={styles.modernMenuSubtitle}>Yakın mağazaları görüntüle</Text>
             </View>
             <Icon name="chevron-right" size={24} color="#9ca3af" />
@@ -1410,6 +1546,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'white',
     marginLeft: 8,
+  },
+  
+  // Agreements and Marketing Styles
+  agreementsContainer: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  agreementsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 16,
+  },
+  marketingTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  marketingSubtitle: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 12,
+    lineHeight: 16,
   },
   
   // Simple Styles
