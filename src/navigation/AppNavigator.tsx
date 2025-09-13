@@ -39,6 +39,7 @@ import MyCampaignsScreen from '../views/MyCampaignsScreen';
 import MyDiscountCodesScreen from '../views/MyDiscountCodesScreen';
 import StoreLocatorScreen from '../views/StoreLocatorScreen';
 import ReferralScreen from '../views/ReferralScreen';
+import { UserLevelScreen } from '../views/UserLevelScreen';
 
 // Components
 import { HamburgerMenu } from '../components/HamburgerMenu';
@@ -503,6 +504,11 @@ const ProfileStack = () => {
         name="Referral"
         component={ReferralScreen as any}
         options={{ title: 'Referans Programı', headerShown: true }}
+      />
+      <Stack.Screen 
+        name="UserLevel"
+        component={UserLevelScreen}
+        options={{ title: 'Seviye Sistemi', headerShown: true }}
       />
     </Stack.Navigator>
   );
