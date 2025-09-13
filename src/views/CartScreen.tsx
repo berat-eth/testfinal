@@ -22,6 +22,7 @@ import { UserController } from '../controllers/UserController';
 import { DiscountWheelController, DiscountCode } from '../controllers/DiscountWheelController';
 import { LoadingIndicator } from '../components/LoadingIndicator';
 import { useAppContext } from '../contexts/AppContext';
+import { CartShareButtons } from '../components/CartShareButtons';
  
 
 interface CartScreenProps {
@@ -522,6 +523,22 @@ export const CartScreen: React.FC<CartScreenProps> = ({ navigation }) => {
       />
 
       {renderDiscountCodeSection()}
+      
+      {/* Sepet Paylaşım Bölümü */}
+      <CartShareButtons
+        cartItems={cartItems.map(item => ({
+          id: item.id,
+          productName: item.product?.name || 'Ürün',
+          price: item.product?.price || 0,
+          quantity: item.quantity,
+          image: item.product?.image,
+        }))}
+        totalAmount={calculateTotal()}
+        onShareSuccess={(platform, expGained) => {
+          console.log(`Sepet paylaşımı başarılı: ${platform}, +${expGained} EXP`);
+        }}
+      />
+      
       {renderSummary()}
     </SafeAreaView>
   );

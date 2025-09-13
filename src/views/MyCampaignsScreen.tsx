@@ -132,23 +132,33 @@ export default function MyCampaignsScreen() {
       const platform = taskId.split('-')[0];
       const shareUrl = SocialSharingController.generateShareUrl(platform);
       
-      // Paylaşım URL'sini aç
-      const { Linking } = require('react-native');
-      await Linking.openURL(shareUrl);
+      // Native share dialog'u kullan
+      const { Share } = require('react-native');
+      const shareText = `🔥 Harika kamp ürünleri keşfet!\n\nHuğlu Outdoor'da indirimli fiyatlarla kamp malzemeleri! 🏕️\n\n#Kamp #Outdoor #HuğluOutdoor`;
+      const shareUrl = 'https://huglu.com';
       
-      // Paylaşım sonucunu kaydet
-      const result = await SocialSharingController.shareToSocial(user.id, taskId, platform, {
-        customText: 'Harika kamp ürünleri keşfet!'
+      const result = await Share.share({
+        message: `${shareText}\n\n${shareUrl}`,
+        url: shareUrl,
+        title: 'Huğlu Outdoor - Kamp Malzemeleri',
       });
       
-      if (result.success) {
-        Alert.alert(
-          'Tebrikler!',
-          `${result.message}\n%${result.rewardEarned.value} indirim kazandınız!`,
-          [{ text: 'Tamam' }]
-        );
-        // Verileri yenile
-        loadData();
+      if (result.action === Share.sharedAction) {
+        // Paylaşım başarılı, EXP ekle
+        const expResult = await UserLevelController.addSocialShareExp(user.id.toString());
+        
+        if (expResult.success) {
+          Alert.alert(
+            '🎉 Paylaşım Başarılı!',
+            `+25 EXP kazandınız!\n\n${expResult.message}`,
+            [{ text: 'Harika!' }]
+          );
+          
+          // Verileri yeniden yükle
+          await loadData();
+        } else {
+          Alert.alert('Paylaşım Başarılı!', 'Ürünü başarıyla paylaştınız.');
+        }
       }
     } catch (error) {
       console.error('Error sharing:', error);

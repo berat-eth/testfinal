@@ -24,6 +24,7 @@ import { VariationSelector } from '../components/VariationSelector';
 import { ProductVariationService } from '../services/ProductVariationService';
 import { Colors } from '../theme/colors';
 import { ModernButton } from '../components/ui/ModernButton';
+import { SocialShareButtons } from '../components/SocialShareButtons';
 
 interface ProductDetailScreenProps {
   navigation: any;
@@ -426,6 +427,17 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             <Text style={styles.sectionTitle}>Ürün Açıklaması</Text>
             <Text style={styles.description}>{product.description}</Text>
           </View>
+
+          {/* Sosyal Paylaşım Bölümü */}
+          <SocialShareButtons
+            productId={product.id.toString()}
+            productName={product.name}
+            productPrice={currentPrice}
+            productImage={product.image}
+            onShareSuccess={(platform, expGained) => {
+              console.log(`Paylaşım başarılı: ${platform}, +${expGained} EXP`);
+            }}
+          />
 
           {/* Review Section */}
           <View style={styles.reviewSection}>

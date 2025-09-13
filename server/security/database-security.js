@@ -26,29 +26,19 @@ class DatabaseSecurity {
       database: process.env.DB_NAME || 'u987029066_mobil',
       port: parseInt(process.env.DB_PORT) || 3306,
       connectionLimit: 10,
-      acquireTimeout: 30000,
-      timeout: 30000,
       queueLimit: 0,
       waitForConnections: true,
-      maxIdle: 30000,
-      idleTimeout: 30000,
       // SSL güvenliği
       ssl: {
-        rejectUnauthorized: true,
-        ca: process.env.DB_SSL_CA,
-        cert: process.env.DB_SSL_CERT,
-        key: process.env.DB_SSL_KEY
+        rejectUnauthorized: false, // Uzak sunucu için false
+        checkServerIdentity: false
       },
       charset: 'utf8mb4',
       // Güvenlik ayarları
       multipleStatements: false,
       dateStrings: true,
       supportBigNumbers: true,
-      bigNumberStrings: true,
-      // Bağlantı güvenliği
-      reconnect: true,
-      reconnectDelay: 2000,
-      maxReconnects: 3
+      bigNumberStrings: true
     };
   }
 

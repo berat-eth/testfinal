@@ -313,6 +313,10 @@ const poolWrapper = {
 // Create user_exp_transactions table if not exists
 async function createUserExpTransactionsTable() {
   try {
+    if (!poolWrapper) {
+      console.error('❌ poolWrapper not initialized yet');
+      return;
+    }
     await poolWrapper.execute(`
       CREATE TABLE IF NOT EXISTS user_exp_transactions (
         id INT AUTO_INCREMENT PRIMARY KEY,
