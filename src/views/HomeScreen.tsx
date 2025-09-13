@@ -166,9 +166,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      // Optimize: Load only necessary data first, then load additional data
+      // Load all products for better variety and multi-image support
       const [allProductsResponse, cats] = await Promise.all([
-        ProductController.getAllProducts(1, 50), // Reduced initial load
+        ProductController.getAllProducts(1, 1000), // Load more products for better variety
         ProductController.getAllCategories(),
       ]);
 
